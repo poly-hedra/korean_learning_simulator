@@ -1,6 +1,6 @@
 """Conversation node: append user utterance into log."""
 
-from states.conversation_state import ConversationState
+from ..state import ConversationState
 
 
 def user_response(state: ConversationState) -> ConversationState:

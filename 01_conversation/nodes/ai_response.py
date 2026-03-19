@@ -1,13 +1,13 @@
 """Conversation node: AI speaks first and then replies by turn."""
 
-from prompts.conversation.prompt_templates import (
+from ..prompts import (
     AI_RESPONSE_OPENING_ROLE_A_TEMPLATE,
     AI_RESPONSE_OPENING_ROLE_B_TEMPLATE,
     AI_RESPONSE_SYSTEM_PROMPT_TEMPLATE,
     AI_RESPONSE_TURN_TEMPLATE,
 )
 from services.llm_service import llm_service
-from states.conversation_state import ConversationState
+from ..state import ConversationState
 
 
 def _guardrail_text(text: str) -> str:

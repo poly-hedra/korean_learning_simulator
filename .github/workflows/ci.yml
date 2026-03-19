@@ -1,0 +1,5 @@
+# Korean Learning Simulator CI 워크플로우
+#
+# 이 워크플로우는 코드가 push되거나 PR이 생성될 때 실행됩니다.
+# 코드 품질 검사, 단위 테스트, PR 코멘트, AI 코드 리뷰를 수행합니다.
+#

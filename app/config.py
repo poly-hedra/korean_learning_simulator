@@ -57,7 +57,7 @@ class Settings:
         object.__setattr__(
             self,
             "turn_limit_by_level",
-            {"초급": 3, "중급": 5, "고급": 7},
+            {"Beginner": 3, "Intermediate": 5, "Advanced": 7},
         )
 
 

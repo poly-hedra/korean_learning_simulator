@@ -1,6 +1,6 @@
 """Evaluation node: spelling check (20%) and error highlighting."""
 
-from states.evaluation_state import EvaluationState
+from ..state import EvaluationState
 
 
 def _mark_basic_typos(text: str) -> tuple[str, int]:
@@ -53,6 +53,7 @@ def evaluate_spelling(state: EvaluationState) -> EvaluationState:
     penalty_ratio = min(1.0, typo_total / allowed)
     score = 10.0 * (1.0 - penalty_ratio * 0.7)
 
-    state["spelling_score"] = round(max(0.0, score), 2)
-    state["highlighted_log"] = highlighted_log
-    return state
+    return {
+        "spelling_score": round(max(0.0, score), 2),
+        "highlighted_log": highlighted_log,
+    }

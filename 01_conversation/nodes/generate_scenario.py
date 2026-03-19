@@ -2,21 +2,21 @@
 
 import json
 
-from prompts.conversation.prompt_templates import (
+from ..prompts import (
     SCENARIO_SYSTEM_PROMPT,
     SCENARIO_USER_PROMPT_TEMPLATE,
 )
 from services.llm_service import llm_service
-from states.conversation_state import ConversationState
+from ..state import ConversationState
 
 
 def _fallback_bundle(level: str, location: str) -> dict:
     style_by_level = {
-        "초급": "짧고 쉬운 문장, 일상 단어 중심",
-        "중급": "중간 길이 문장, 연결어미와 상황 설명 포함",
-        "고급": "긴 문장, 추상 표현과 미묘한 뉘앙스 포함",
+        "Beginner": "짧고 쉬운 문장, 일상 단어 중심",
+        "Intermediate": "중간 길이 문장, 연결어미와 상황 설명 포함",
+        "Advanced": "긴 문장, 추상 표현과 미묘한 뉘앙스 포함",
     }
-    style = style_by_level.get(level, style_by_level["초급"])
+    style = style_by_level.get(level, style_by_level["Beginner"])
     return {
         "scenario": (
             f"장소는 {location}이며, 두 사람이 특정한 목적을 두고 대화합니다. "
@@ -52,7 +52,7 @@ def generate_scenario(state: ConversationState) -> ConversationState:
     - 대화 참여자 A/B 페르소나 동시 생성
     """
 
-    level = state.get("user_profile", {}).get("korean_level", "초급")
+    level = state.get("user_profile", {}).get("korean_level", "Beginner")
     location = state.get("location", "공원")
 
     raw = llm_service.generate_text(

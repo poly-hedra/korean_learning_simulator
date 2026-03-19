@@ -6,17 +6,32 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+from importlib import import_module
+from queue import Empty, Queue
+from threading import Lock
+from typing import Iterator
 
 from app.config import settings
 from database.models import SessionRecord
 from database.repository import repository
-from graphs.conversation.conversation_graph import build_conversation_graph
-from graphs.evaluation.evaluation_graph import build_evaluation_graph
-from graphs.review.review_graph import build_review_graph
-from nodes.conversation.ai_response import ai_response
-from nodes.conversation.user_response import user_response
 from services.llm_service import llm_service
+
+build_conversation_graph = import_module(
+    "01_conversation.graph"
+).build_conversation_graph
+build_evaluation_graph = import_module("02_evaluation.graph").build_evaluation_graph
+build_review_graph = import_module("03_review.graph").build_review_graph
+ai_response = import_module("01_conversation.nodes.ai_response").ai_response
+user_response = import_module("01_conversation.nodes.user_response").user_response
+select_weak_logs = import_module("03_review.nodes.select_weak_logs").select_weak_logs
+generate_chosung_quiz = import_module(
+    "03_review.nodes.generate_chosung_quiz"
+).generate_chosung_quiz
+generate_flashcards = import_module(
+    "03_review.nodes.generate_flashcards"
+).generate_flashcards
 
 
 class LearningOrchestrator:
@@ -30,6 +45,21 @@ class LearningOrchestrator:
         # 세션별 진행 중 상태 (데모용 인메모리)
         self.active_states: dict[str, dict] = {}
 
+    def _build_review_base_state(self, user_id: str) -> dict:
+        profile = repository.users.get(user_id)
+        if not profile:
+            raise ValueError("user profile not found")
+
+        return {
+            "user_profile": {
+                "user_id": profile.user_id,
+                "country": profile.country,
+                "korean_level": profile.korean_level,
+                "has_korean_media_experience": profile.has_korean_media_experience,
+                "selected_role": profile.selected_role,
+            }
+        }
+
     def start_session(
         self,
         user_id: str,
@@ -41,10 +71,17 @@ class LearningOrchestrator:
     ) -> dict:
         """0~3 단계: 첫 정보 수집 + 장소 + 시나리오 + 페르소나 생성."""
 
+        level_alias = {
+            "초급": "Beginner",
+            "중급": "Intermediate",
+            "고급": "Advanced",
+        }
+        canonical_level = level_alias.get(korean_level, korean_level)
+
         profile = repository.upsert_user_profile(
             user_id=user_id,
             country=country,
-            korean_level=korean_level,
+            korean_level=canonical_level,
             has_korean_media_experience=has_korean_media_experience,
         )
         if selected_role:
@@ -61,7 +98,7 @@ class LearningOrchestrator:
             "location": location,
             "conversation_log": [],
             "turn_count": 0,
-            "turn_limit": settings.turn_limit_by_level.get(korean_level, 7),
+            "turn_limit": settings.turn_limit_by_level.get(canonical_level, 7),
             "is_finished": False,
         }
 
@@ -126,7 +163,9 @@ class LearningOrchestrator:
         record = SessionRecord(
             user_id=user_id,
             week=week,
-            korean_level=evaluated.get("user_profile", {}).get("korean_level", "초급"),
+            korean_level=evaluated.get("user_profile", {}).get(
+                "korean_level", "Beginner"
+            ),
             location=evaluated.get("location", ""),
             scenario=evaluated.get("scenario", ""),
             conversation_log=evaluated.get("conversation_log", []),
@@ -149,18 +188,14 @@ class LearningOrchestrator:
                         )
         repository.save_wrong_words(user_id=user_id, week=week, wrong_words=wrong_words)
 
-        # 추가: LLM을 사용한 요약 분석(어휘/맥락/맞춤법) 및 진행 로그
-        progress_log: list[dict] = []
+        # 추가: LLM을 사용한 요약 분석(어휘/맥락/맞춤법)
         try:
-            progress_log.append({"pct": 5, "msg": "평가 시작"})
-
             # 대화 전체를 문자열로 준비 (AI+사용자 모두)
             convo = evaluated.get("conversation_log", [])
             convo_text = "\n".join(
                 f"{turn.get('speaker')}({turn.get('name', '')}): {turn.get('utterance', '')}"
                 for turn in convo
             )
-            progress_log.append({"pct": 30, "msg": "대화 로그 준비 완료"})
 
             system_prompt = (
                 "너는 한국어 학습 시뮬레이터의 평가 보조자다. "
@@ -175,19 +210,13 @@ class LearningOrchestrator:
                 "위 내용을 바탕으로 2~3문장으로 요약해줘."
             )
 
-            progress_log.append({"pct": 60, "msg": "LLM 분석 요청 중"})
             llm_out = llm_service.generate_text(
                 system_prompt=system_prompt, user_prompt=user_prompt
             )
-            progress_log.append({"pct": 95, "msg": "LLM 응답 수신"})
 
             evaluated["llm_summary"] = llm_out
-        except Exception as exc:  # fallback: 안전하게 처리
+        except Exception:  # fallback: 안전하게 처리
             evaluated["llm_summary"] = "요약 생성 중 오류가 발생했습니다."
-            progress_log.append({"pct": 100, "msg": f"요약 실패: {str(exc)}"})
-
-        progress_log.append({"pct": 100, "msg": "평가 완료"})
-        evaluated["progress_log"] = progress_log
 
         self.active_states[user_id] = evaluated
         return evaluated
@@ -195,20 +224,89 @@ class LearningOrchestrator:
     def build_weekly_review(self, user_id: str) -> dict:
         """9단계: 약점 세션 선택 + 초성 퀴즈 + 플래시카드 생성."""
 
-        profile = repository.users.get(user_id)
-        if not profile:
-            raise ValueError("user profile not found")
-
-        state = {
-            "user_profile": {
-                "user_id": profile.user_id,
-                "country": profile.country,
-                "korean_level": profile.korean_level,
-                "has_korean_media_experience": profile.has_korean_media_experience,
-                "selected_role": profile.selected_role,
-            }
-        }
+        state = self._build_review_base_state(user_id=user_id)
         return self.review_graph.invoke(state)
+
+    def build_weekly_review_with_progress(
+        self, user_id: str
+    ) -> Iterator[dict[str, object]]:
+        """Generate weekly review with progress events for terminal UI."""
+
+        state = self._build_review_base_state(user_id=user_id)
+
+        yield {"pct": 5, "msg": "복습 준비를 시작하는 중"}
+        yield {"pct": 15, "msg": "복습할 약점 세션을 고르는 중"}
+        state = select_weak_logs(state)
+        selected_count = len(state.get("selected_weak_sessions", []))
+        yield {"pct": 20, "msg": f"약점 세션 {selected_count}개 선택 완료"}
+
+        if not selected_count:
+            yield {
+                "pct": 100,
+                "msg": "복습할 세션이 없어 준비를 마쳤습니다",
+                "review": state,
+            }
+            return
+
+        progress_queue: Queue[tuple[str, float, str]] = Queue()
+        progress_lock = Lock()
+        task_progress = {"chosung": 0.0, "flashcards": 0.0}
+        task_message = {
+            "chosung": "초성 퀴즈 준비 대기 중",
+            "flashcards": "플래시카드 준비 대기 중",
+        }
+
+        def publish_progress(task_name: str, progress: float, message: str) -> None:
+            clamped = max(0.0, min(1.0, progress))
+            with progress_lock:
+                task_progress[task_name] = clamped
+                task_message[task_name] = message
+            progress_queue.put((task_name, clamped, message))
+
+        parallel_base_state = deepcopy(state)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            chosung_future = executor.submit(
+                generate_chosung_quiz,
+                deepcopy(parallel_base_state),
+                lambda progress, message: publish_progress(
+                    "chosung", progress, message
+                ),
+            )
+            flashcards_future = executor.submit(
+                generate_flashcards,
+                deepcopy(parallel_base_state),
+                lambda progress, message: publish_progress(
+                    "flashcards", progress, message
+                ),
+            )
+
+            last_pct = 20
+            while True:
+                try:
+                    _, _, _ = progress_queue.get(timeout=0.1)
+                except Empty:
+                    if chosung_future.done() and flashcards_future.done():
+                        break
+                    continue
+
+                with progress_lock:
+                    average_progress = (
+                        task_progress["chosung"] + task_progress["flashcards"]
+                    ) / 2
+                    pct = max(last_pct, min(99, 20 + int(average_progress * 79)))
+                    msg = f"{task_message['chosung']} | {task_message['flashcards']}"
+
+                if pct > last_pct:
+                    last_pct = pct
+                    yield {"pct": pct, "msg": msg}
+
+            chosung_state = chosung_future.result()
+            flashcards_state = flashcards_future.result()
+
+        state["chosung_quiz"] = chosung_state.get("chosung_quiz", [])
+        state["flashcards"] = flashcards_state.get("flashcards", [])
+
+        yield {"pct": 100, "msg": "복습 항목 준비 완료", "review": state}
 
 
 orchestrator = LearningOrchestrator()

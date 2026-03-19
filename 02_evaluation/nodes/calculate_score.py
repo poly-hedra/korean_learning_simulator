@@ -1,7 +1,7 @@
 """Evaluation node: aggregate weighted score and produce feedback."""
 
 from services.scoring_service import scoring_service
-from states.evaluation_state import EvaluationState
+from ..state import EvaluationState
 
 
 def calculate_score(state: EvaluationState) -> EvaluationState:
@@ -12,7 +12,7 @@ def calculate_score(state: EvaluationState) -> EvaluationState:
     total = scoring_service.total_score_10(
         vocab=vocab, context=context, spelling=spelling
     )
-    level = state.get("user_profile", {}).get("korean_level", "초급")
+    level = state.get("user_profile", {}).get("korean_level", "Beginner")
     tier = scoring_service.tier_for_level(level, total)
 
     state["total_score_10"] = total

@@ -1,6 +1,6 @@
 """Evaluation node: context coherence (50%)."""
 
-from states.evaluation_state import EvaluationState
+from ..state import EvaluationState
 
 
 def evaluate_context(state: EvaluationState) -> EvaluationState:
@@ -18,8 +18,7 @@ def evaluate_context(state: EvaluationState) -> EvaluationState:
         if turn.get("speaker") == "user"
     ]
     if not user_utterances:
-        state["context_score"] = 0.0
-        return state
+        return {"context_score": 0.0}
 
     joined = " ".join(user_utterances)
     hit_location = 1.0 if location and location in joined else 0.6
@@ -28,5 +27,4 @@ def evaluate_context(state: EvaluationState) -> EvaluationState:
 
     # 0~10 스케일
     score = 10.0 * ((hit_location * 0.4) + (hit_scenario * 0.3) + (length_bonus * 0.3))
-    state["context_score"] = round(score, 2)
-    return state
+    return {"context_score": round(score, 2)}

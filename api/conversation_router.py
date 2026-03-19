@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.main import orchestrator
+from app.orchestrator import orchestrator
 
 router = APIRouter(prefix="/conversation", tags=["conversation"])
 
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/conversation", tags=["conversation"])
 class StartConversationRequest(BaseModel):
     user_id: str = Field(..., description="고유 사용자 ID")
     country: str
-    korean_level: str = Field(..., description="초급/중급/고급")
+    korean_level: str = Field(..., description="Beginner/Intermediate/Advanced")
     has_korean_media_experience: bool
     location: str = Field(..., description="예: 병원/공원/학교/콘서트장")
     selected_role: str | None = Field(default=None, description="A 또는 B")

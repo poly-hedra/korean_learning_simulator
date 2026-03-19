@@ -1,10 +1,13 @@
 import json
+from importlib import import_module
 
-from nodes.conversation.generate_scenario import generate_scenario
+generate_scenario = import_module(
+    "01_conversation.nodes.generate_scenario"
+).generate_scenario
 
 # Use a plain dict as state (ConversationState is a TypedDict)
 state = {
-    "user_profile": {"korean_level": "초급"},
+    "user_profile": {"korean_level": "Beginner"},
     "location": "카페",
 }
 

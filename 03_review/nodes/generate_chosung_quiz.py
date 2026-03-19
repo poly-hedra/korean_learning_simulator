@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import random
 import re
+from typing import Callable
 
 from services.llm_service import LLMService
-from states.review_state import ReviewState
+from ..state import ReviewState
 
 _CHOSUNG = [
     "ㄱ",
@@ -97,8 +98,46 @@ _BAD_TARGET_SUFFIXES = [
 ]
 _MAX_QUIZZES = 5
 _CHOICE_MODEL_NAME = "solar-pro2"
+_LLM_CANDIDATE_COUNT = 12
+_FALLBACK_CHOICES = [
+    "사람",
+    "시간",
+    "음식",
+    "오늘",
+    "내일",
+    "학교",
+    "친구",
+    "가게",
+    "버스",
+    "지하철",
+    "여행",
+    "공원",
+    "병원",
+    "바다",
+    "비행기",
+    "식당",
+    "선물",
+    "학교",
+    "하늘",
+    "호수",
+    "지갑",
+    "지도",
+    "지식",
+    "고양이",
+    "가방",
+    "기차",
+    "나무",
+    "노트",
+    "도시",
+    "도로",
+    "라면",
+    "로봇",
+    "마을",
+    "모자",
+]
 
 _chosung_choice_llm = LLMService(model_name=_CHOICE_MODEL_NAME)
+ProgressCallback = Callable[[float, str], None]
 
 
 def _to_chosung(word: str) -> str:
@@ -116,6 +155,8 @@ def _extract_candidate_words(sessions: list[dict]) -> list[str]:
     seen: set[str] = set()
     for session in sessions:
         for turn in session.get("conversation_log", []):
+            if turn.get("speaker") != "ai":
+                continue
             utterance = turn.get("utterance", "")
             for match in _WORD_PATTERN.finditer(utterance):
                 word = _normalize_word(match.group(0))
@@ -128,6 +169,14 @@ def _extract_candidate_words(sessions: list[dict]) -> list[str]:
 
 def _chosung_signature(word: str) -> str:
     return _to_chosung(word)
+
+
+def _same_starting_chosung(word: str, answer: str) -> bool:
+    """Return True when `word` starts with the same chosung as `answer`."""
+
+    w_sig = _chosung_signature(word)
+    a_sig = _chosung_signature(answer)
+    return bool(w_sig and a_sig and w_sig[0] == a_sig[0])
 
 
 def _parse_llm_choices(raw: str, answer: str) -> list[str]:
@@ -145,51 +194,80 @@ def _parse_llm_choices(raw: str, answer: str) -> list[str]:
         return []
 
     distractors: list[str] = []
-    target_signature = _chosung_signature(answer)
     for item in parsed:
         word = str(item).strip()
         if (
             len(word) < 2
-            or len(word) != len(answer)
             or word == answer
             or not _WORD_PATTERN.fullmatch(word)
-            or _chosung_signature(word) != target_signature
+            or not _same_starting_chosung(word, answer)
             or word in distractors
         ):
             continue
         distractors.append(word)
-    return distractors[:3]
+    return distractors
+
+
+def _select_best_distractors(answer: str, pool: list[str], limit: int = 3) -> list[str]:
+    """Pick best distractors from a larger pool.
+
+    우선순위:
+    1) 같은 첫 초성 + 같은 길이
+    2) 같은 첫 초성(길이 무관)
+    """
+
+    if not pool:
+        return []
+
+    unique_pool: list[str] = []
+    seen: set[str] = set()
+    for word in pool:
+        if word not in seen and word != answer:
+            seen.add(word)
+            unique_pool.append(word)
+
+    same_length = [w for w in unique_pool if len(w) == len(answer)]
+    diff_length = [w for w in unique_pool if len(w) != len(answer)]
+
+    random.shuffle(same_length)
+    random.shuffle(diff_length)
+
+    chosen = same_length[:limit]
+    if len(chosen) < limit:
+        chosen.extend(diff_length[: limit - len(chosen)])
+    return chosen
 
 
 def _generate_llm_distractors(
     answer: str, candidates: list[str], excluded_words: set[str]
 ) -> list[str]:
     signature = _chosung_signature(answer)
+    first_chosung = signature[:1]
     candidate_hint = [
         word
         for word in candidates
         if word != answer
-        and len(word) == len(answer)
-        and _chosung_signature(word) == signature
+        and _same_starting_chosung(word, answer)
         and word not in excluded_words
     ][:10]
 
     system_prompt = (
         "너는 한국어 초성 퀴즈 보기 생성기다. "
-        "정답과 같은 초성을 가진 실제 한국어 단어 보기 3개를 만든다. "
+        f"정답과 같은 첫 초성으로 시작하는 실제 한국어 단어 보기 {_LLM_CANDIDATE_COUNT}개를 만든다. "
         "반드시 JSON 배열만 출력한다."
     )
     user_prompt = (
         f"정답: {answer}\n"
         f"정답 초성: {signature}\n"
+        f"정답 첫 초성: {first_chosung}\n"
         f"정답 글자 수: {len(answer)}\n"
         "규칙:\n"
-        "- 정답과 같은 초성 패턴을 가진 실제 존재하는 한국어 단어 3개를 생성\n"
-        "- 정답과 같은 글자 수를 유지\n"
+        f"- 정답과 같은 첫 초성으로 시작하는 실제 한국어 단어 {_LLM_CANDIDATE_COUNT}개를 생성\n"
+        "- 글자 수는 같아도 되고 달라도 된다 (같은 길이를 우선적으로 많이 포함)\n"
         "- 정답과 동일한 단어는 금지\n"
         "- 보기들은 서로 달라야 함\n"
         "- 없는 말, 조합한 말, 어색한 비표준어는 금지\n"
-        '- 설명 없이 JSON 배열만 출력. 예: ["너무", "노모", "넝마"]\n'
+        '- 설명 없이 JSON 배열만 출력. 예: ["너무", "노모", "넝마", ...]\n'
         f"제외 단어: {', '.join(sorted(excluded_words)) if excluded_words else '없음'}\n"
         f"참고 후보: {', '.join(candidate_hint) if candidate_hint else '없음'}"
     )
@@ -203,10 +281,12 @@ def _generate_llm_distractors(
 def _build_choices(answer: str, candidates: list[str]) -> list[str]:
     distractors: list[str] = []
     excluded_words = {answer}
+    signature = _chosung_signature(answer)
 
     for _ in range(2):
         generated = _generate_llm_distractors(answer, candidates, excluded_words)
-        for word in generated:
+        picked = _select_best_distractors(answer, generated, limit=3)
+        for word in picked:
             if word not in excluded_words:
                 distractors.append(word)
                 excluded_words.add(word)
@@ -221,10 +301,47 @@ def _build_choices(answer: str, candidates: list[str]) -> list[str]:
             for word in candidates
             if word != answer
             and len(word) == len(answer)
-            and _chosung_signature(word) == _chosung_signature(answer)
+            and _chosung_signature(word) == signature
             and word not in distractors
         ]
         distractors.extend(same_signature_candidates[: 3 - len(distractors)])
+
+    # 1차 완화: 초성만 같으면 길이는 달라도 허용
+    if len(distractors) < 3:
+        relaxed_signature_candidates = [
+            word
+            for word in candidates
+            if word != answer
+            and len(word) >= 2
+            and _same_starting_chosung(word, answer)
+            and word not in distractors
+        ]
+        distractors.extend(relaxed_signature_candidates[: 3 - len(distractors)])
+
+    # 2차 완화: 같은 첫 초성 + 같은 길이 단어 허용
+    if len(distractors) < 3:
+        same_start_same_length_candidates = [
+            word
+            for word in candidates
+            if word != answer
+            and len(word) == len(answer)
+            and _same_starting_chosung(word, answer)
+            and word not in distractors
+        ]
+        random.shuffle(same_start_same_length_candidates)
+        distractors.extend(same_start_same_length_candidates[: 3 - len(distractors)])
+
+    # 3차 완화: 고정 fallback 단어 사용 (같은 첫 초성만 허용)
+    if len(distractors) < 3:
+        fallback_pool = [
+            word
+            for word in _FALLBACK_CHOICES
+            if word != answer
+            and word not in distractors
+            and _same_starting_chosung(word, answer)
+        ]
+        random.shuffle(fallback_pool)
+        distractors.extend(fallback_pool[: 3 - len(distractors)])
 
     if len(distractors) < 3:
         return []
@@ -278,24 +395,55 @@ def _pick_target(utterance: str) -> str | None:
     return pool[0]
 
 
-def generate_chosung_quiz(state: ReviewState) -> ReviewState:
+def generate_chosung_quiz(
+    state: ReviewState, progress_callback: ProgressCallback | None = None
+) -> ReviewState:
     quizzes: list[dict] = []
     sessions = state.get("selected_weak_sessions", [])
     candidate_words = _extract_candidate_words(sessions)
+    ai_turns = [
+        turn
+        for session in sessions
+        for turn in session.get("conversation_log", [])
+        if turn.get("speaker") == "ai"
+    ]
+    total_ai_turns = max(1, len(ai_turns))
 
+    if progress_callback:
+        progress_callback(0.0, "초성 퀴즈용 AI 발화를 확인하는 중")
+
+    processed_ai_turns = 0
     for session in sessions:
         for turn in session.get("conversation_log", []):
+            if turn.get("speaker") != "ai":
+                continue
+            processed_ai_turns += 1
             utterance = turn.get("utterance", "")
             target = _pick_target(utterance)
             if not target:
+                if progress_callback:
+                    progress_callback(
+                        processed_ai_turns / total_ai_turns,
+                        f"초성 퀴즈 문장 분석 중 ({processed_ai_turns}/{total_ai_turns})",
+                    )
                 continue
 
             answer = _normalize_word(target)
             if len(answer) < 2:
+                if progress_callback:
+                    progress_callback(
+                        processed_ai_turns / total_ai_turns,
+                        f"초성 퀴즈 문장 분석 중 ({processed_ai_turns}/{total_ai_turns})",
+                    )
                 continue
 
             choices = _build_choices(answer, candidate_words)
             if len(choices) < 4:
+                if progress_callback:
+                    progress_callback(
+                        processed_ai_turns / total_ai_turns,
+                        f"초성 퀴즈 문장 분석 중 ({processed_ai_turns}/{total_ai_turns})",
+                    )
                 continue
 
             masked = _replace_target_with_chosung(utterance, target, answer)
@@ -312,10 +460,16 @@ def generate_chosung_quiz(state: ReviewState) -> ReviewState:
                     "original_sentence": utterance,
                 }
             )
+            if progress_callback:
+                progress_callback(
+                    processed_ai_turns / total_ai_turns,
+                    f"초성 퀴즈 문장 분석 중 ({processed_ai_turns}/{total_ai_turns})",
+                )
             if len(quizzes) >= _MAX_QUIZZES:
                 break
         if len(quizzes) >= _MAX_QUIZZES:
             break
 
-    state["chosung_quiz"] = quizzes
-    return state
+    if progress_callback:
+        progress_callback(1.0, f"초성 퀴즈 {len(quizzes)}개 준비 완료")
+    return {"chosung_quiz": quizzes}

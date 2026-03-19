@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.main import orchestrator
+from app.orchestrator import orchestrator
 
 router = APIRouter(prefix="/evaluation", tags=["evaluation"])
 

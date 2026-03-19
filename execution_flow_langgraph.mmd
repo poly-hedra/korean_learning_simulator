@@ -1,0 +1,19 @@
+flowchart TD
+    C_START([START]) --> generate_scenario[generate_scenario]
+    generate_scenario --> C_END([END])
+
+    C_END --> E_START([START])
+    E_START --> evaluate_vocab[evaluate_vocab]
+    E_START --> evaluate_context[evaluate_context]
+    E_START --> evaluate_spelling[evaluate_spelling]
+    evaluate_vocab --> calculate_score[calculate_score]
+    evaluate_context --> calculate_score
+    evaluate_spelling --> calculate_score
+    calculate_score --> E_END([END])
+
+    E_END -->|복습 선택 시| R_START([START])
+    R_START --> select_weak_logs[select_weak_logs]
+    select_weak_logs --> generate_chosung_quiz[generate_chosung_quiz]
+    select_weak_logs --> generate_flashcards[generate_flashcards]
+    generate_chosung_quiz --> R_END([END])
+    generate_flashcards --> R_END([END])

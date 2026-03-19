@@ -1,0 +1,5 @@
+# Korean Learning Simulator CD 워크플로우 (GHCR + EC2 배포)
+#
+# 이 워크플로우는 main 브랜치에 Push될 때 실행됩니다.
+# GitHub Actions에서 Docker 이미지를 빌드하고 GHCR에 Push한 후,
+# EC2에서는 Pull만 하여 빠르게 배포합니다.
