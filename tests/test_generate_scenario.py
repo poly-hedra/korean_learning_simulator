@@ -5,7 +5,7 @@ generate_scenario = import_module(
     "01_conversation.nodes.generate_scenario"
 ).generate_scenario
 
-# Use a plain dict as state (ConversationState is a TypedDict)
+# 상태는 일반 dict로 사용한다 (ConversationState는 TypedDict)
 state = {
     "user_profile": {"korean_level": "Beginner"},
     "location": "카페",

@@ -1,4 +1,4 @@
-"""In-memory repository used by routers and graphs."""
+"""라우터와 그래프에서 사용하는 인메모리 저장소."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from database.models import SessionRecord, UserProfileRecord, WrongWordRecord
 
 
 class Repository:
-    """Simple stateful storage layer for local development."""
+    """로컬 개발용 간단한 상태 저장 계층."""
 
     def __init__(self) -> None:
         self.users: dict[str, UserProfileRecord] = {}

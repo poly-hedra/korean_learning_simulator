@@ -1,4 +1,4 @@
-"""Application configuration.
+"""애플리케이션 설정.
 
 이 파일은 서비스 전역 설정을 한 곳에서 관리합니다.
 특히 LLM 모델명과 대화 턴 수/평가 가중치처럼 여러 모듈에서
@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 def _load_dotenv() -> None:
-    """Load a local .env file into process environment.
+    """로컬 .env 파일을 프로세스 환경 변수로 로드한다.
 
     외부 패키지 의존성을 추가하지 않고, 현재 프로젝트 루트의 .env만 단순 파싱합니다.
     이미 셸 환경에 들어있는 값은 덮어쓰지 않습니다.
@@ -37,7 +37,7 @@ _load_dotenv()
 
 @dataclass(frozen=True)
 class Settings:
-    """Runtime settings loaded from environment with safe defaults."""
+    """환경 변수에서 읽되 안전한 기본값을 사용하는 런타임 설정."""
 
     app_name: str = os.getenv("APP_NAME", "korean-learning-agent")
     llm_model: str = os.getenv("LLM_MODEL", "solar-pro2")

@@ -1,4 +1,4 @@
-"""Evaluation graph builder."""
+"""평가 그래프 빌더."""
 
 from langgraph.graph import END, START, StateGraph
 
@@ -10,7 +10,7 @@ from .state import EvaluationState
 
 
 def build_evaluation_graph():
-    """Create graph for vocab/context/spelling -> total score."""
+    """어휘/맥락/맞춤법 평가 후 총점을 계산하는 그래프를 생성한다."""
 
     graph = StateGraph(EvaluationState)
     graph.add_node("evaluate_vocab", evaluate_vocab)

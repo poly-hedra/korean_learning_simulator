@@ -1,10 +1,10 @@
-"""Evaluation node: context coherence (50%)."""
+"""평가 노드: 맥락 일관성 (50%)."""
 
 from ..state import EvaluationState
 
 
 def evaluate_context(state: EvaluationState) -> EvaluationState:
-    """Heuristic context score based on scenario/location anchoring.
+    """시나리오/장소 정합성을 기준으로 맥락 점수를 휴리스틱으로 계산한다.
 
     실제 운영에서는 LLM judge 혹은 별도 context classifier로 교체 가능합니다.
     """

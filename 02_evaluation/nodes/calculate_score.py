@@ -1,4 +1,4 @@
-"""Evaluation node: aggregate weighted score and produce feedback."""
+"""평가 노드: 가중 점수를 집계하고 피드백을 생성한다."""
 
 from services.scoring_service import scoring_service
 from ..state import EvaluationState

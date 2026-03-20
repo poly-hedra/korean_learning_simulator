@@ -1,4 +1,4 @@
-"""API router for weekly review workflow."""
+"""주간 복습 워크플로용 API 라우터."""
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel

@@ -1,4 +1,4 @@
-"""Review node: generate chosung quiz from prior dialogue lines."""
+"""복습 노드: 이전 대화 문장으로 초성 퀴즈를 생성한다."""
 
 from __future__ import annotations
 
@@ -172,7 +172,7 @@ def _chosung_signature(word: str) -> str:
 
 
 def _same_starting_chosung(word: str, answer: str) -> bool:
-    """Return True when `word` starts with the same chosung as `answer`."""
+    """`word`가 `answer`와 같은 초성으로 시작하면 True를 반환한다."""
 
     w_sig = _chosung_signature(word)
     a_sig = _chosung_signature(answer)
@@ -209,7 +209,7 @@ def _parse_llm_choices(raw: str, answer: str) -> list[str]:
 
 
 def _select_best_distractors(answer: str, pool: list[str], limit: int = 3) -> list[str]:
-    """Pick best distractors from a larger pool.
+    """더 큰 후보군에서 가장 적절한 오답 선택지를 고른다.
 
     우선순위:
     1) 같은 첫 초성 + 같은 길이

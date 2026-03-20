@@ -1,4 +1,4 @@
-"""Application orchestration service.
+"""애플리케이션 오케스트레이션 서비스.
 
 요구한 0~9 단계 중 실제 흐름 제어를 담당합니다.
 라우터는 이 오케스트레이터를 호출만 하도록 얇게 유지합니다.
@@ -35,7 +35,7 @@ generate_flashcards = import_module(
 
 
 class LearningOrchestrator:
-    """Controls conversation/evaluation/review workflows."""
+    """대화/평가/복습 워크플로를 제어한다."""
 
     def __init__(self) -> None:
         self.conversation_graph = build_conversation_graph()
@@ -230,7 +230,7 @@ class LearningOrchestrator:
     def build_weekly_review_with_progress(
         self, user_id: str
     ) -> Iterator[dict[str, object]]:
-        """Generate weekly review with progress events for terminal UI."""
+        """터미널 UI용 진행 이벤트와 함께 주간 복습을 생성한다."""
 
         state = self._build_review_base_state(user_id=user_id)
 

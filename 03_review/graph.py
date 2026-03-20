@@ -1,4 +1,4 @@
-"""Review graph builder."""
+"""복습 그래프 빌더."""
 
 from langgraph.graph import END, START, StateGraph
 
@@ -9,7 +9,7 @@ from .state import ReviewState
 
 
 def build_review_graph():
-    """Create graph for weekly weak-session review workflow."""
+    """주간 취약 세션 복습 워크플로용 그래프를 생성한다."""
 
     graph = StateGraph(ReviewState)
     graph.add_node("select_weak_logs", select_weak_logs)

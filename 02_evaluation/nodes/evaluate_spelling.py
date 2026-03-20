@@ -1,10 +1,10 @@
-"""Evaluation node: spelling check (20%) and error highlighting."""
+"""평가 노드: 맞춤법 검사 (20%) 및 오류 강조."""
 
 from ..state import EvaluationState
 
 
 def _mark_basic_typos(text: str) -> tuple[str, int]:
-    """Simple typo marker.
+    """간단한 오탈자 표시기.
 
     - 반복된 공백
     - 자주 등장하는 잘못된 표기 예시(데모용)

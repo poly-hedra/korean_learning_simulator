@@ -1,4 +1,4 @@
-"""Review node: generate flashcards from conversation vocabulary."""
+"""복습 노드: 대화 어휘로 플래시카드를 생성한다."""
 
 from __future__ import annotations
 

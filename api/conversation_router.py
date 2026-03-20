@@ -1,4 +1,4 @@
-"""API router for conversation workflow."""
+"""대화 워크플로용 API 라우터."""
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field

@@ -1,4 +1,4 @@
-"""Conversation node: generate scenario from level and location."""
+"""대화 노드: 레벨과 장소로 시나리오를 생성한다."""
 
 import json
 
@@ -45,7 +45,7 @@ def _fallback_bundle(level: str, location: str) -> dict:
 
 
 def generate_scenario(state: ConversationState) -> ConversationState:
-    """Build scenario text from user level and selected location.
+    """사용자 레벨과 선택한 장소로 시나리오 텍스트를 생성한다.
 
     요구사항 2/3번을 함께 반영:
     - 한국어 수준 + 장소 기반 시나리오

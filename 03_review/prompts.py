@@ -1,4 +1,4 @@
-"""Prompt templates for weekly review agent."""
+"""주간 복습 에이전트용 프롬프트 템플릿."""
 
 REVIEW_SYSTEM_PROMPT = """
 너는 주간 복습 도우미다.

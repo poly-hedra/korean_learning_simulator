@@ -1,4 +1,4 @@
-"""Prompt templates for evaluation agent."""
+"""평가 에이전트용 프롬프트 템플릿."""
 
 EVALUATION_SYSTEM_PROMPT = """
 너는 한국어 학습 시뮬레이터 평가자다.

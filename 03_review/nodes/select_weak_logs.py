@@ -1,4 +1,4 @@
-"""Review node: select 1~3 lowest-score sessions for a user."""
+"""복습 노드: 사용자 기준 최저 점수 세션 1~3개를 선택한다."""
 
 from database.repository import repository
 from ..state import ReviewState

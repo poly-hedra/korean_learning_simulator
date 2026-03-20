@@ -1,4 +1,4 @@
-"""Conversation graph builder."""
+"""대화 그래프 빌더."""
 
 from langgraph.graph import END, START, StateGraph
 
@@ -7,7 +7,7 @@ from .state import ConversationState
 
 
 def build_conversation_graph():
-    """Create graph for scenario generation.
+    """시나리오 생성을 위한 그래프를 생성한다.
 
     역할 선택은 이 그래프 이후(터미널/API 단계)에서 받도록 분리한다.
     """

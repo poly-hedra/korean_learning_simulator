@@ -1,20 +1,23 @@
-"""FastAPI application entrypoint."""
+"""FastAPI 애플리케이션 진입점."""
 
 import argparse
 import os
 
 from fastapi import FastAPI
+import gradio as gr
 
 from api.conversation_router import router as conversation_router
 from api.evaluation_router import router as evaluation_router
 from api.review_router import router as review_router
 from app.config import settings
 from app.orchestrator import orchestrator
+from app.ui import demo as gradio_demo
 
 app = FastAPI(title=settings.app_name)
 app.include_router(conversation_router)
 app.include_router(evaluation_router)
 app.include_router(review_router)
+app = gr.mount_gradio_app(app, gradio_demo, path="/ui")
 
 
 @app.get("/")
@@ -27,7 +30,7 @@ def health() -> dict:
 
 
 def _select_from_menu(title: str, options: list[str]) -> str:
-    """Render a numbered menu in terminal and return selected value."""
+    """터미널에 번호 메뉴를 표시하고 선택값을 반환한다."""
 
     print(f"\n{title}")
     for idx, item in enumerate(options, start=1):
@@ -41,7 +44,7 @@ def _select_from_menu(title: str, options: list[str]) -> str:
 
 
 def _render_emoji_progress_bar(pct: int, width: int = 20) -> str:
-    """Render emoji progress bar using user-requested glyphs."""
+    """사용자 요청 글리프로 이모지 진행 바를 렌더링한다."""
 
     safe_pct = max(0, min(100, pct))
     filled = round(width * safe_pct / 100)
@@ -49,7 +52,7 @@ def _render_emoji_progress_bar(pct: int, width: int = 20) -> str:
 
 
 def _run_terminal_mode() -> None:
-    """Interactive terminal flow for first-time access and location selection.
+    """첫 방문 사용자 정보 수집과 장소 선택을 위한 대화형 터미널 흐름.
 
     사용자 요청처럼 서비스 첫 진입 시점에 장소를 바로 고를 수 있도록
     터미널 기반 온보딩 UI를 제공합니다.

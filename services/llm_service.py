@@ -1,4 +1,4 @@
-"""LLM service abstraction.
+"""LLM 서비스 추상화.
 
 UPSTAGE API 키가 있으면 실제 Solar Chat API를 호출하고,
 키가 없거나 호출이 실패하면 개발용 fallback 응답을 사용합니다.
@@ -12,7 +12,7 @@ from app.config import settings
 
 
 class LLMService:
-    """Small wrapper around the configured Upstage Solar model."""
+    """설정된 Upstage Solar 모델을 감싸는 작은 래퍼."""
 
     def __init__(self, model_name: str | None = None) -> None:
         self.model_name = model_name or settings.llm_model
@@ -21,14 +21,14 @@ class LLMService:
         self.timeout_seconds = settings.llm_timeout_seconds
 
     def _fallback_response(self, user_prompt: str) -> str:
-        """Deterministic local fallback used when real API is unavailable."""
+        """실제 API 사용이 불가할 때 쓰는 결정론적 로컬 폴백."""
 
         head = f"[{self.model_name}:fallback]"
         clipped = user_prompt.strip().replace("\n", " ")[:140]
         return f"{head} {clipped}"
 
     def _call_upstage(self, system_prompt: str, user_prompt: str) -> str:
-        """Call Upstage Chat Completions API.
+        """Upstage Chat Completions API를 호출한다.
 
         Upstage는 OpenAI 호환 chat completions 인터페이스를 제공하므로,
         `POST /chat/completions` 형식으로 요청합니다.
@@ -66,7 +66,7 @@ class LLMService:
         return content
 
     def generate_text(self, system_prompt: str, user_prompt: str) -> str:
-        """Generate text from prompts using Upstage when possible."""
+        """가능하면 Upstage를 사용해 프롬프트에서 텍스트를 생성한다."""
 
         if not self.api_key:
             return self._fallback_response(user_prompt)

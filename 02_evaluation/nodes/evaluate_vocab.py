@@ -1,11 +1,11 @@
-"""Evaluation node: vocabulary diversity (30%)."""
+"""평가 노드: 어휘 다양성 (30%)."""
 
 from services.rag_service import rag_service
 from ..state import EvaluationState
 
 
 def evaluate_vocab(state: EvaluationState) -> EvaluationState:
-    """Score vocabulary diversity from user utterances only."""
+    """사용자 발화만 기준으로 어휘 다양성 점수를 계산한다."""
 
     user_utterances = [
         turn["utterance"]

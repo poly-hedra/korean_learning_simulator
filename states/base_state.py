@@ -1,17 +1,17 @@
-"""Common state definitions shared across graphs."""
+"""그래프 전반에서 공통으로 사용하는 상태 정의."""
 
 from typing import Any, TypedDict
 
 
 class DialogueTurn(TypedDict):
-    """One turn in conversation log."""
+    """대화 로그의 한 턴."""
 
     speaker: str
     utterance: str
 
 
 class UserProfile(TypedDict):
-    """Information collected only on first visit."""
+    """첫 방문 시에만 수집하는 정보."""
 
     user_id: str
     country: str
@@ -21,7 +21,7 @@ class UserProfile(TypedDict):
 
 
 class BaseState(TypedDict, total=False):
-    """Shared fields used by multiple workflows."""
+    """여러 워크플로에서 공유하는 필드."""
 
     user_profile: UserProfile
     location: str

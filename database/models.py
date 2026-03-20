@@ -1,4 +1,4 @@
-"""Database models.
+"""데이터베이스 모델.
 
 현재는 단순화를 위해 dataclass 기반 인메모리 모델을 사용합니다.
 향후 SQLModel/ORM으로 전환해도 repository 인터페이스는 유지됩니다.

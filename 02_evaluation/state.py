@@ -1,4 +1,4 @@
-"""State schema for evaluation graph."""
+"""평가 그래프용 상태 스키마."""
 
 from typing import TypedDict
 
@@ -6,7 +6,7 @@ from states.base_state import BaseState
 
 
 class EvaluationState(BaseState, total=False):
-    """Evaluation state with per-metric scores and feedback."""
+    """지표별 점수와 피드백을 담는 평가 상태."""
 
     vocab_score: float
     context_score: float
