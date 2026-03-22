@@ -28,7 +28,7 @@
 ## ✅ 1️⃣ 클론 한 뒤, 현 상태 파악
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/poly-hedra/korean_learning_simulator.git
 git status
 git branch
 ```
@@ -42,6 +42,7 @@ git init은 사용하지 않습니다.
 ```bash
 git checkout dev
 git pull origin dev
+uv sync
 git checkout -b feat/login
 ```
 
