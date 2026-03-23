@@ -68,9 +68,8 @@ def _format_personas(personas: dict[str, dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def _to_chat_pairs(conversation_log: list[dict[str, Any]]) -> list[list[str]]:
-    pairs: list[list[str]] = []
-    pending_user = ""
+def _to_chat_messages(conversation_log: list[dict[str, Any]]) -> list[dict[str, str]]:
+    messages: list[dict[str, str]] = []
 
     for turn in conversation_log:
         speaker = turn.get("speaker", "")
@@ -79,15 +78,11 @@ def _to_chat_pairs(conversation_log: list[dict[str, Any]]) -> list[list[str]]:
         text = f"{name}: {utterance}" if name else utterance
 
         if speaker == "user":
-            pending_user = text
+            messages.append({"role": "user", "content": text})
         elif speaker == "ai":
-            pairs.append([pending_user, text])
-            pending_user = ""
+            messages.append({"role": "assistant", "content": text})
 
-    if pending_user:
-        pairs.append([pending_user, ""])
-
-    return pairs
+    return messages
 
 
 def _location_art_html(location: str) -> str:
@@ -237,7 +232,7 @@ def start_session_ui(
     level: str,
     media_exp: bool,
     location: str,
-) -> tuple[str, str, str, list[list[str]], str, bool, bool]:
+) -> tuple[str, str, str, list[dict[str, str]], str, bool, bool]:
     try:
         state = orchestrator.start_session(
             user_id=user_id.strip() or "guest",
@@ -268,7 +263,7 @@ def start_session_ui(
 def choose_role_ui(
     user_id: str,
     selected_role: str,
-) -> tuple[list[list[str]], str, bool, bool]:
+) -> tuple[list[dict[str, str]], str, bool, bool]:
     try:
         state = orchestrator.select_role_and_opening(
             user_id=user_id,
@@ -277,7 +272,7 @@ def choose_role_ui(
     except Exception as exc:
         return [], f"역할 선택 실패: {exc}", False, False
 
-    chat_pairs = _to_chat_pairs(state.get("conversation_log", []))
+    chat_pairs = _to_chat_messages(state.get("conversation_log", []))
     return (
         chat_pairs,
         f"역할 {selected_role} 선택 완료. 이제 대화를 시작하세요.",
@@ -291,8 +286,8 @@ def send_message_ui(
     role_ready: bool,
     conversation_finished: bool,
     message: str,
-    chat_pairs: list[list[str]],
-) -> tuple[list[list[str]], str, str, bool, bool]:
+    chat_pairs: list[dict[str, str]],
+) -> tuple[list[dict[str, str]], str, str, bool, bool]:
     if not role_ready:
         return (
             chat_pairs,
@@ -332,7 +327,7 @@ def send_message_ui(
             conversation_finished,
         )
 
-    new_pairs = _to_chat_pairs(state.get("conversation_log", []))
+    new_pairs = _to_chat_messages(state.get("conversation_log", []))
     finished = bool(state.get("is_finished", False))
     status = (
         "턴 제한 도달. 평가 버튼을 눌러 결과를 확인하세요."
