@@ -25,8 +25,8 @@ class BaseState(TypedDict, total=False):
 
     user_profile: UserProfile
     location: str
-    scenario: str
-    personas: dict[str, dict[str, Any]]
+    scenario_title: str  # 구 scenario(단일 문자열) → scenario_title로 분리; dialogue_function·relationship_type은 ConversationState에 추가
+    personas: dict[str, dict[str, Any]]  # 페르소나 필드: job→role, goal→mission 으로 변경
     conversation_log: list[DialogueTurn]
     turn_count: int
     turn_limit: int

@@ -13,7 +13,7 @@ class SessionRecord:
     week: int
     korean_level: str
     location: str
-    scenario: str
+    scenario_title: str  # 구 scenario 필드명 변경; conflict 필드는 제거됨
     conversation_log: list[dict]
     total_score_10: float
     tier: str

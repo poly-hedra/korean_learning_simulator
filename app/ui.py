@@ -56,13 +56,14 @@ UI_CSS = """
 
 
 def _format_personas(personas: dict[str, dict[str, Any]]) -> str:
+    # 페르소나 필드 변경 반영: job→role, goal→mission
     lines: list[str] = []
     for role in ["A", "B"]:
         p = personas.get(role, {})
         lines.append(
             (
-                f"[{role}] 이름: {p.get('name', '')} | 직업: {p.get('job', '')} | "
-                f"나이: {p.get('age', '')} | 성별: {p.get('gender', '')} | 목표: {p.get('goal', '')}"
+                f"[{role}] 이름: {p.get('name', '')} | 역할: {p.get('role', '')} | "
+                f"나이: {p.get('age', '')} | 성별: {p.get('gender', '')} | 목표: {p.get('mission', '')}"
             )
         )
     return "\n".join(lines)
@@ -119,7 +120,7 @@ def _location_art_html(location: str) -> str:
     <text x="300" y="45" font-size="26" text-anchor="middle" fill="#2a3550">2호선 지하철</text>
 </svg>
 """,
-        "한강 둔치": """
+        "한강": """
 <svg width="100%" viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg">
     <defs>
         <linearGradient id="skyRiver" x1="0" y1="0" x2="0" y2="1">
@@ -139,7 +140,7 @@ def _location_art_html(location: str) -> str:
     <rect x="0" y="168" width="600" height="52" fill="#8fc67b"/>
     <path d="M50 168 L125 168 L90 132 Z" fill="#6aaa5c"/>
     <path d="M500 168 L570 168 L540 138 Z" fill="#6aaa5c"/>
-    <text x="300" y="42" font-size="26" text-anchor="middle" fill="#2a3550">한강 둔치</text>
+    <text x="300" y="42" font-size="26" text-anchor="middle" fill="#2a3550">한강</text>
 </svg>
 """,
         "명동": """
@@ -245,7 +246,7 @@ def start_session_ui(
     except Exception as exc:  # UI에서는 예외를 메시지로 반환
         return "", "", f"세션 시작 실패: {exc}", [], "", False, False
 
-    scenario = state.get("scenario", "")
+    scenario = state.get("scenario_title", "")  # 구 "scenario" 키 → "scenario_title"로 변경
     personas = state.get("personas", {})
     personas_text = _format_personas(personas)
 
@@ -511,7 +512,7 @@ with gr.Blocks(title="Korean Learning Simulator", css=UI_CSS) as demo:
     with gr.Row():
         location = gr.Dropdown(
             label="Location",
-            choices=["지하철2호선", "한강 둔치", "명동", "올림픽공원", "편의점"],
+            choices=["지하철2호선", "한강", "명동", "올림픽공원", "편의점"],
             value="명동",
         )
         start_btn = gr.Button("1) 세션 시작", variant="primary")

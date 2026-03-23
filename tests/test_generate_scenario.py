@@ -12,9 +12,11 @@ state = {
 }
 
 result = generate_scenario(state)
+# 구 scenario/conflict → scenario_title/relationship_type/dialogue_function 으로 구조 변경
 output = {
-    "scenario": result.get("scenario"),
-    "conflict": result.get("conflict"),
+    "scenario_title": result.get("scenario_title"),
+    "relationship_type": result.get("relationship_type"),
+    "dialogue_function": result.get("dialogue_function"),
     "personas": result.get("personas"),
 }
 print(json.dumps(output, ensure_ascii=False, indent=2))

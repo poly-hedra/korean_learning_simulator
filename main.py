@@ -77,7 +77,7 @@ def _run_terminal_mode() -> None:
 
     location_options = [
         "지하철2호선",
-        "한강 둔치",
+        "한강",
         "명동",
         "올림픽공원",
         "편의점",
@@ -101,16 +101,17 @@ def _run_terminal_mode() -> None:
         )
 
         print("\n[Scenario(시나리오)]")
-        print(started.get("scenario", ""))
+        print(started.get("scenario_title", ""))  # 구 "scenario" 키 → "scenario_title"로 변경
 
         print("\n[Participants(대화 참여자 설정)]")
         personas = started.get("personas", {})
         for role in ["A", "B"]:
             persona = personas.get(role, {})
             print(
-                f"{role}: Name={persona.get('name', '')}, Job={persona.get('job', '')}, "
+                # 페르소나 필드 변경 반영: job→role, goal→mission
+                f"{role}: Name={persona.get('name', '')}, Role={persona.get('role', '')}, "
                 f"Age={persona.get('age', '')}, Gender={persona.get('gender', '')}, "
-                f"Goal={persona.get('goal', '')}"
+                f"Mission={persona.get('mission', '')}"
             )
 
         selected_role = _select_from_menu(
