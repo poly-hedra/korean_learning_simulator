@@ -56,13 +56,14 @@ UI_CSS = """
 
 
 def _format_personas(personas: dict[str, dict[str, Any]]) -> str:
+    # 페르소나 필드 변경 반영: job→role, goal→mission
     lines: list[str] = []
     for role in ["A", "B"]:
         p = personas.get(role, {})
         lines.append(
             (
-                f"[{role}] 이름: {p.get('name', '')} | 직업: {p.get('job', '')} | "
-                f"나이: {p.get('age', '')} | 성별: {p.get('gender', '')} | 목표: {p.get('goal', '')}"
+                f"[{role}] 이름: {p.get('name', '')} | 역할: {p.get('role', '')} | "
+                f"나이: {p.get('age', '')} | 성별: {p.get('gender', '')} | 목표: {p.get('mission', '')}"
             )
         )
     return "\n".join(lines)
@@ -245,7 +246,7 @@ def start_session_ui(
     except Exception as exc:  # UI에서는 예외를 메시지로 반환
         return "", "", f"세션 시작 실패: {exc}", [], "", False, False
 
-    scenario = state.get("scenario", "")
+    scenario = state.get("scenario_title", "")  # 구 "scenario" 키 → "scenario_title"로 변경
     personas = state.get("personas", {})
     personas_text = _format_personas(personas)
 

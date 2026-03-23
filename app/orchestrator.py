@@ -167,7 +167,7 @@ class LearningOrchestrator:
                 "korean_level", "Beginner"
             ),
             location=evaluated.get("location", ""),
-            scenario=evaluated.get("scenario", ""),
+            scenario_title=evaluated.get("scenario_title", ""),  # 구 scenario 키 → scenario_title
             conversation_log=evaluated.get("conversation_log", []),
             total_score_10=evaluated.get("total_score_10", 0.0),
             tier=evaluated.get("tier", ""),

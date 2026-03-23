@@ -9,7 +9,7 @@ def evaluate_context(state: EvaluationState) -> EvaluationState:
     실제 운영에서는 LLM judge 혹은 별도 context classifier로 교체 가능합니다.
     """
 
-    scenario = state.get("scenario", "")
+    scenario = state.get("scenario_title", "")  # 구 "scenario" 키 → "scenario_title"로 변경
     location = state.get("location", "")
 
     user_utterances = [

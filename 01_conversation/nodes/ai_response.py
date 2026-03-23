@@ -1,6 +1,6 @@
 """대화 노드: AI가 먼저 시작하고 턴마다 응답한다."""
 
-from ..prompts import (
+from ..prompts.ai_response import (
     AI_RESPONSE_OPENING_ROLE_A_TEMPLATE,
     AI_RESPONSE_OPENING_ROLE_B_TEMPLATE,
     AI_RESPONSE_SYSTEM_PROMPT_TEMPLATE,
@@ -36,9 +36,16 @@ def ai_response(state: ConversationState) -> ConversationState:
 
     ai_persona = personas.get(ai_role, {})
     other_persona = personas.get(selected_role, {})
-    scenario = state.get("scenario", "")
     user_input = state.get("user_input", "")
     conversation_log = state.get("conversation_log", [])
+
+    location = state.get("location", "")
+    relationship_type = state.get("relationship_type", "")
+    dialogue_function = state.get("dialogue_function", [])
+    scenario = (
+        f"{relationship_type} 관계인 두 사람이 {location}에 함께 있다. "
+        f"대화 목적은 {', '.join(dialogue_function)}이다."
+    )
 
     # 간결한 페르소나 설명 구성
     def persona_summary(p: dict) -> str:
@@ -47,14 +54,14 @@ def ai_response(state: ConversationState) -> ConversationState:
         parts = []
         if p.get("name"):
             parts.append(p.get("name"))
-        if p.get("job"):
-            parts.append(p.get("job"))
+        if p.get("role"):
+            parts.append(p.get("role"))
         if p.get("age"):
             parts.append(str(p.get("age")))
         if p.get("gender"):
             parts.append(p.get("gender"))
-        if p.get("goal"):
-            parts.append("goal:" + p.get("goal"))
+        if p.get("mission"):
+            parts.append("목표: " + p.get("mission"))
         return ", ".join(parts)
 
     ai_summary = persona_summary(ai_persona)
