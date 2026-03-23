@@ -232,7 +232,7 @@ def start_session_ui(
     level: str,
     media_exp: bool,
     location: str,
-) -> tuple[str, str, str, list[dict[str, str]], str, bool, bool]:
+) -> tuple[str, str, str, list[list[str]], str, bool, bool]:
     try:
         state = orchestrator.start_session(
             user_id=user_id.strip() or "guest",
@@ -263,7 +263,7 @@ def start_session_ui(
 def choose_role_ui(
     user_id: str,
     selected_role: str,
-) -> tuple[list[dict[str, str]], str, bool, bool]:
+) -> tuple[list[list[str]], str, bool, bool]:
     try:
         state = orchestrator.select_role_and_opening(
             user_id=user_id,
