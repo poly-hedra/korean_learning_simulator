@@ -167,7 +167,9 @@ class LearningOrchestrator:
                 "korean_level", "Beginner"
             ),
             location=evaluated.get("location", ""),
-            scenario_title=evaluated.get("scenario_title", ""),  # 구 scenario 키 → scenario_title
+            scenario_title=evaluated.get(
+                "scenario_title", ""
+            ),  # 구 scenario 키 → scenario_title
             conversation_log=evaluated.get("conversation_log", []),
             total_score_10=evaluated.get("total_score_10", 0.0),
             tier=evaluated.get("tier", ""),
@@ -199,9 +201,9 @@ class LearningOrchestrator:
 
             system_prompt = (
                 "너는 한국어 학습 시뮬레이터의 평가 보조자다. "
-                "다음 대화를 어휘 다양성, 맥락 일관성, 맞춤법 측면에서 분석해라. "
-                "분석 결과를 한국어로 2~3문장으로 요약하라. 각 항목의 강점이나 약점은 간단히 언급하고, "
-                "전체 점수와 티어를 반영한 권장 개선점을 한 문장으로 덧붙여라. 출력은 순수한 한국어 텍스트만으로 하라."
+                "다음 대화 전체를 파악해서 어휘 사용의 다양성, 문법적/ 상황적으로 잘못된 어휘가 사용되지 않았는지 여부, 처음 부터 끝까지 맥락의 일관되게 유지 되는지 등으로 분석해라. "
+                "분석 결과를 한국어로 2~3문장으로 요약하고 따뜻한 피드백을 다양한 이모지와 함께 덧붙여라."
+                "출력은 순수한 한국어 텍스트만으로 하라."
             )
 
             user_prompt = (

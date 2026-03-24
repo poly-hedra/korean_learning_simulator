@@ -246,7 +246,9 @@ def start_session_ui(
     except Exception as exc:  # UI에서는 예외를 메시지로 반환
         return "", "", f"세션 시작 실패: {exc}", [], "", False, False
 
-    scenario = state.get("scenario_title", "")  # 구 "scenario" 키 → "scenario_title"로 변경
+    scenario = state.get(
+        "scenario_title", ""
+    )  # 구 "scenario" 키 → "scenario_title"로 변경
     personas = state.get("personas", {})
     personas_text = _format_personas(personas)
 
@@ -338,17 +340,34 @@ def send_message_ui(
     return new_pairs, "", status, role_ready, finished
 
 
-def evaluate_ui(user_id: str, week: int) -> tuple[str, str, str, str, int]:
+def evaluate_ui(user_id: str, week: int) -> tuple[str, str, str, str, str, int]:
     try:
         evaluated = orchestrator.evaluate_session(user_id=user_id, week=week)
     except Exception as exc:
-        return "", "", "", f"평가 실패: {exc}", week
+        return "", "", "", "", f"평가 실패: {exc}", week
 
     total = evaluated.get("total_score_10", 0)
     tier = evaluated.get("tier", "")
     feedback = evaluated.get("feedback", "")
     summary = evaluated.get("llm_summary", "")
-    return str(total), str(tier), feedback, summary, week + 1
+    match_count = int(evaluated.get("SCK_match_count", 0))
+    total_tokens = int(evaluated.get("SCK_total_tokens", 0))
+    match_rate = float(evaluated.get("SCK_match_rate", 0.0))
+    level_counts = evaluated.get("SCK_level_counts", {})
+
+    rows = ["급수 | 발생 횟수", "--- | ---"]
+    for level, count in sorted(level_counts.items(), key=lambda x: int(x[0])):
+        rows.append(f"{level}급 | {count}회")
+    level_table = (
+        "\n".join(rows) if level_counts else "급수 | 발생 횟수\n--- | ---\n없음 | 0회"
+    )
+
+    sck_text = (
+        f"SCK 일치율: {match_rate}% ({match_count}/{total_tokens})\n\n"
+        "[급수별 발생 표]\n"
+        f"{level_table}"
+    )
+    return str(total), str(tier), sck_text, feedback, summary, week + 1
 
 
 def build_review_ui(user_id: str) -> tuple[str, list[dict], list[dict], int, int, int]:
@@ -537,6 +556,7 @@ with gr.Blocks(title="Korean Learning Simulator", css=UI_CSS) as demo:
         total_score_box = gr.Textbox(label="Total Score")
         tier_box = gr.Textbox(label="Tier")
     feedback_box = gr.Textbox(label="Feedback", lines=3)
+    sck_box = gr.Textbox(label="SCK 일치율 / 급수별 발생", lines=8)
     summary_box = gr.Textbox(label="LLM Summary", lines=3)
 
     review_btn = gr.Button("4) 복습 생성")
@@ -609,7 +629,14 @@ with gr.Blocks(title="Korean Learning Simulator", css=UI_CSS) as demo:
     eval_btn.click(
         fn=evaluate_ui,
         inputs=[user_id_state, week_state],
-        outputs=[total_score_box, tier_box, feedback_box, summary_box, week_state],
+        outputs=[
+            total_score_box,
+            tier_box,
+            sck_box,
+            feedback_box,
+            summary_box,
+            week_state,
+        ],
     )
 
     review_btn.click(

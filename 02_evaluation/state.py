@@ -1,7 +1,5 @@
 """평가 그래프용 상태 스키마."""
 
-from typing import TypedDict
-
 from states.base_state import BaseState
 
 
@@ -15,3 +13,11 @@ class EvaluationState(BaseState, total=False):
     tier: str
     feedback: str
     highlighted_log: list[dict[str, str]]
+    tokenized_original_words: list[str]
+    tokenized_normalized_words: list[str]
+    SCK_correspondence: list[dict[str, str | int]]
+    SCK_match_count: int
+    SCK_total_tokens: int
+    SCK_match_rate: float
+    SCK_level_counts: dict[str, int]
+    SCK_unresolved_homonyms: dict[str, int]
