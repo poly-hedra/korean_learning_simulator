@@ -50,6 +50,7 @@ SCENARIO_SYSTEM_PROMPT = """
   - 어휘와 문법은 한국어 {korean_level} 학습자 수준을 유지한다
   - 단, 장소명·브랜드명·음식명·인물 이름 등 고유명사는 자유롭게 사용한다
   - 장소의 실제 명소, 시설, 문화적 맥락을 반영해 생동감 있는 시나리오를 만든다
+  - 지하철 노선의 경우 실제 환승 정보를 정확히 반영하라
 """
  
 SCENARIO_USER_PROMPT_TEMPLATE = """
@@ -64,7 +65,8 @@ SCENARIO_USER_PROMPT_TEMPLATE = """
    선택지: {dialogue_functions}
 
    참고) {location_context}
-   위 맥락에서 구체적인 장소명·브랜드명·음식명을 최소 1개 이상 mission 또는 scenario_title에 반드시 활용한다.
+   위 맥락은 대화 소재 참고용이다. 대화는 반드시 {location} 안에서 일어나야 한다.
+   실제 사실을 왜곡하지 말고, 불확실한 정보는 사용하지 말라.
 
 2. 인물 설정 — 입력받은 관계 유형에 맞게 A, B 확정 (위 role 규칙 참고)
  
