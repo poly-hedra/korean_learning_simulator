@@ -17,6 +17,7 @@ def build_conversation_graph():
 
     graph.add_node("generate_location_context", generate_location_context)
     graph.add_node("generate_scenario", generate_scenario)
+
     graph.add_edge(START, "generate_location_context")
     graph.add_edge("generate_location_context", "generate_scenario")
     graph.add_edge("generate_scenario", END)

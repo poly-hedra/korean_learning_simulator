@@ -13,7 +13,7 @@ VERSION = "education_based"
 
 SYSTEM_PROMPT = """
 ## Role
-너는 한국어 학습자 수준에 맞춘 대화 시나리오 설계자다.
+너는 학습자의 한국어 수준에 맞춘 대화 시나리오 설계자다.
 장소와 관계 유형을 입력받아 아래 제약을 지키며 JSON을 생성한다.
 
 ## 제약
@@ -37,10 +37,23 @@ SYSTEM_PROMPT = """
   - 형식: "[관계]인 두 사람의 대화입니다. [A이름]은 ~하고 싶고, [B이름]은/는 ~합니다."
   - 한국어 1급 학습자가 이해할 수 있는 어휘 사용
 
-### ④ mission 조건
-  - 이 대화로 전달하고 싶은 정보나 달성하고픈 행동 (20자 이내)
-  - 반드시 [대화 목표] 및 [참고 어휘] 참고
-  - 낯선 사람 → 비대칭 필수 (요청자 / 조력자)
+### ④ 대화 목표(mission) 조건
+  - 이 대화로 전달하고 싶은 정보나 달성하고픈 행동 (30자 이내)
+  - 반드시 1단계에서 결정한 [대화 기능] 참고
+  - 비대칭/대칭 패턴은 대화 기능(dialogue_function)을 기준으로 결정한다.
+
+  [비대칭 필수] 대화 기능이 아래 중 하나인 경우 → A는 요청자, B는 조력자
+    장소 묻기 | 물건 사기 | 음식 주문하기 | 시간 묻기
+    예) A mission: "화장실이 어디에 있는지 알고 싶어요." / B mission: "화장실 위치를 알려 주고 싶어요."
+
+  [대칭 권장] 대화 기능이 아래 중 하나인 경우 → A·B 각자 궁금한 것을 대화 목표로
+    일상 묻기 | 취향 묻기 | 기분 묻기 | 날씨/풍경 묻기 | 자기소개 | 경험 묻기 | 어제/주말에 한 일 묻기
+    예) A mission: "상대방이 좋아하는 음식을 알고 싶어요." / B mission: "상대방의 주말 일과가 궁금해요."
+
+  [둘 다 허용] 약속 정하기 → 상황에 맞게 선택
+
+  [예외] 낯선 사람 관계 → dialogue_function에 관계없이 항상 비대칭 (요청자 / 조력자)
+
   - 나쁜 예) "친구와 만나기로 했어요." (완료된 상황 금지)
              "오늘 저녁에 한강에서 함께 달리기 할래요?" (대화에 활용할 첫 문장 금지)
 
@@ -57,8 +70,7 @@ _USER_PROMPT_TEMPLATE = """
 1. 대화 목표 결정 — {location}에서 할 수 있는 활동들을 다양하게 떠올린 뒤 아래 선택지와 잘 어울리는 것을 정할 것.
    낯선 사람 → 반드시 1개만 선택 | 나머지 → 1~2개 선택
 
-   선택지:  안부/근황 묻기 | 외모/성격 묘사하기 | 감정 표현하기 | 건강 상태 설명하기 | 가족/고향 소개하기 | 음식 주문하기 | 물건 비교하기 | 교환/환불 요청하기 | 교통/길 찾기
-   | 전화 통화하기 | 여행 계획 말하기 | 허락 구하기 | 도움 요청하기 | 거절하기 | 모임 제안하기 | 미래 계획 말하기
+   선택지: {dialogue_functions}
 
    참고) {location}에서 할 수 있는 활동들
      한강 → 데이트, 어학당 소풍, 견학, 산책, 달리기, 사진 찍기, 음악 듣기, 배 타기, 라면 먹기, 꽃 구경, 책 읽기,
@@ -83,8 +95,10 @@ _USER_PROMPT_TEMPLATE = """
   "location": "{location}",
   "dialogue_function": [],
   "relationship_type": "{relationship_type}",
-  "character_A": {{ "name": "", "age": "0", "gender": "남/여", "role": "", "mission": "" }},
-  "character_B": {{ "name": "", "age": "0", "gender": "남/여", "role": "", "mission": "" }}
+  "personas": {{
+    "A": {{ "name": "", "age": "0", "gender": "남/여", "role": "", "mission": "" }},
+    "B": {{ "name": "", "age": "0", "gender": "남/여", "role": "", "mission": "" }}
+  }}
 }}
 
 ## 예시
@@ -93,17 +107,21 @@ _USER_PROMPT_TEMPLATE = """
   "scenario_description": "낯선 사람끼리의 대화입니다. 리사는 화장실이 어디에 있는지 알고 싶고, 영은은 위치를 알려 주고 싶어합니다.",
   "location": "백화점",
   "dialogue_function": ["장소 묻기"], "relationship_type": "낯선 사람",
-  "character_A": {{ "name": "리사", "age": "21", "gender": "여", "role": "대학생", "mission": "화장실이 어디에 있는지 알고 싶어요." }},
-  "character_B": {{ "name": "영은", "age": "35", "gender": "여", "role": "백화점 직원", "mission": "화장실 위치를 알려 주고 싶어요." }}
+  "personas": {{
+    "A": {{ "name": "리사", "age": "21", "gender": "여", "role": "대학생", "mission": "화장실이 어디에 있는지 알고 싶어요." }},
+    "B": {{ "name": "영은", "age": "35", "gender": "여", "role": "백화점 직원", "mission": "화장실 위치를 알려 주고 싶어요." }}
+  }}
 }}
 
 예시 2 - 입력: 장소=카페, 관계 유형=연인 → 대칭 패턴 + 외국인 이름 B
-{{ "scenario_title": "카페에서 만난 연인들",
-  "scenario_description": "연인 관계인 두 사람의 대화입니다. 현아는 남자 친구가 좋아하는 음료를 알고 싶고, 제이크는 여자 친구의 오늘 기분이 궁금합니다.",
+{{ "scenario_title": "카페에서 디저트 이야기를 나누는 연인",
+  "scenario_description": "연인 관계인 두 사람의 대화입니다. 현아는 제이크가 좋아하는 음료를 알고 싶고, 제이크는 현아의 오늘 기분이 궁금합니다.",
   "location": "카페",
   "dialogue_function": ["취향 묻기", "기분 묻기"], "relationship_type": "연인",
-  "character_A": {{ "name": "현아", "age": 23, "gender": "여", "role": "여자 친구", "mission": "남자 친구가 좋아하는 음료를 알고 싶어요." }},
-  "character_B": {{ "name": "제이크", "age": 24, "gender": "남", "role": "남자 친구", "mission": "여자 친구의 오늘 기분을 알고 싶어요." }}
+  "personas": {{
+    "A": {{ "name": "현아", "age": "23", "gender": "여", "role": "여자 친구", "mission": "남자 친구가 좋아하는 음료를 알고 싶어요." }},
+    "B": {{ "name": "제이크", "age": "24", "gender": "남", "role": "남자 친구", "mission": "여자 친구의 오늘 기분을 알고 싶어요." }}
+  }}
 }}
 
 ## 참고 어휘
@@ -115,6 +133,28 @@ _USER_PROMPT_TEMPLATE = """
 형용사: 좋다, 가깝다, 멀다, 많다, 싸다, 비싸다, 맛있다, 바쁘다, 괜찮다
 """
 
+LEVEL_MAP: dict[str, str] = {
+    "Beginner": "1급",
+    "Intermediate": "3급",
+    "Advanced": "5급",
+}
+
+DIALOGUE_FUNCTIONS: dict[str, list[str]] = {
+    "1급": [
+        "자기소개", "장소 묻기", "일상 묻기", "취향 묻기", "경험 묻기",
+        "물건 사기", "음식 주문하기", "시간 묻기", "약속 정하기",
+        "기분 묻기", "날씨/풍경 묻기", "어제/주말에 한 일 묻기",
+    ],
+    "2급": [
+        "안부/근황 묻기", "외모/성격 묘사하기", "감정 표현하기",
+        "건강 상태 설명하기", "가족/고향 소개하기",
+        "음식 주문하기", "물건 비교하기", "교환/환불 요청하기",
+        "교통/길 찾기", "전화 통화하기", "여행 계획 말하기",
+        "허락 구하기", "도움 요청하기", "거절하기",
+        "모임 제안하기", "미래 계획 말하기",
+    ],
+}
+
 _RELATIONSHIP_TYPES = ["친구", "선배-후배", "연인", "선생님-학생", "낯선 사람"]
 
 
@@ -122,10 +162,13 @@ def build_system_prompt() -> str:
     return SYSTEM_PROMPT
 
 
-def build_user_message(location: str, level: str = "1급") -> str:
+def build_user_message(location: str, level: str = "Beginner") -> str:
+    level_str = LEVEL_MAP.get(level, "1급")
     relationship_type = random.choice(_RELATIONSHIP_TYPES)
+    dialogue_functions = " | ".join(DIALOGUE_FUNCTIONS.get(level_str, DIALOGUE_FUNCTIONS["1급"]))
     return _USER_PROMPT_TEMPLATE.format(
-        level=level,
+        level=level_str,
         location=location,
         relationship_type=relationship_type,
+        dialogue_functions=dialogue_functions,
     )
