@@ -101,7 +101,7 @@ def _run_terminal_mode() -> None:
         )
 
         print("\n[Scenario(시나리오)]")
-        print(started.get("scenario_description", ""))
+        print(started.get("scenario_description", ""))  # 구 "scenario" 키 → "scenario_title" → 학습자 안내용 "scenario_description"으로 변경
 
         print("\n[Participants(대화 참여자 설정)]")
         personas = started.get("personas", {})
@@ -163,6 +163,23 @@ def _run_terminal_mode() -> None:
 
         print("\n[Evaluation Feedback(평가 피드백)]")
         print(evaluated.get("feedback", ""))
+
+        match_count = int(evaluated.get("SCK_match_count", 0))
+        total_tokens = int(evaluated.get("SCK_total_tokens", 0))
+        match_rate = float(evaluated.get("SCK_match_rate", 0.0))
+        level_counts = evaluated.get("SCK_level_counts", {})
+
+        print("\n[SCK 일치율]")
+        print(f"{match_rate}% ({match_count}/{total_tokens})")
+
+        print("\n[급수별 발생 표]")
+        print("급수 | 발생 횟수")
+        print("--- | ---")
+        if level_counts:
+            for level, count in sorted(level_counts.items(), key=lambda x: int(x[0])):
+                print(f"{level}급 | {count}회")
+        else:
+            print("없음 | 0회")
 
         if evaluated.get("llm_summary"):
             print("\n[LLM Summary(LLM 요약)]")
