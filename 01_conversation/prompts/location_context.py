@@ -1,16 +1,27 @@
 LOCATION_CONTEXT_PROMPT = """
-{location}에서 한국어를 배우는 외국인 대학생이 경험할 수 있는 상황들을 3~5문장으로 작성해라.
+{location}에서 외국인 대학생이 접할 수 있는 구체적인 소재들을 3~5문장으로 나열해라.
 
-아래 항목을 포함한다:
-- 이 장소에서 흔히 하는 활동과 체험 (야외 여가, 장비·물품 대여, 먹거리 등 다양한 경험 포함)
-- 이 장소와 관련해 한국에서 널리 알려진 음식·브랜드·문화
-- 대화가 자연스럽게 시작될 수 있는 상황
+- 이 장소에서 먹을 수 있는 음식과 음료
+- 이 장소에서 볼 수 있는 명소나 랜드마크
+- 이 장소에서 할 수 있는 활동 (다양하게)
 
-주의: 브랜드명이나 장소명이 확실하지 않으면 일반 표현으로 대체할 것.
-      (예: 없는 브랜드 → "편의점", "푸드트럭", "한강 카페")
-      실제 사실에 기반한 정보만 포함하고, 가상의 정보는 피할 것.      지하철 노선의 경우 실제 환승 정보만 포함하라.설명·번호·제목·주석·자기 수정 없이 자연스러운 문장으로만 출력한다.
+주의:
+- 확실하지 않은 브랜드명·장소명은 일반 표현으로 대체할 것
+  (예: 없는 브랜드 → "편의점", "푸드트럭", "한강 카페")
+- 실제 사실에 기반한 정보만 포함하고 가상의 정보는 피할 것
+- 설명·번호·제목·주석·자기 수정 없이 자연스러운 문장으로만 출력한다
+{location_specific_note}
 """
 
+_LOCATION_NOTES = {
+    "한강": "- 자전거 타기는 최소화하고 다른 활동 위주로 작성할 것",
+    "지하철": "- 환승 노선·출구 정보는 실제 사실만 포함할 것",
+}
 
 def build_location_context_prompt(location: str) -> str:
-    return LOCATION_CONTEXT_PROMPT.format(location=location)
+    note = _LOCATION_NOTES.get(location, "")
+    note_str = f"\n{note}" if note else ""
+    return LOCATION_CONTEXT_PROMPT.format(
+        location=location,
+        location_specific_note=note_str
+    )
