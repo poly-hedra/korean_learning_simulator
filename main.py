@@ -101,7 +101,7 @@ def _run_terminal_mode() -> None:
         )
 
         print("\n[Scenario(시나리오)]")
-        print(started.get("scenario_title", ""))  # 구 "scenario" 키 → "scenario_title"로 변경
+        print(started.get("scenario_description", ""))
 
         print("\n[Participants(대화 참여자 설정)]")
         personas = started.get("personas", {})
