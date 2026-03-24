@@ -1,0 +1,16 @@
+LOCATION_CONTEXT_PROMPT = """
+{location}에서 한국어를 배우는 외국인 대학생이 경험할 수 있는 상황들을 3~5문장으로 작성해라.
+
+아래 항목을 포함한다:
+- 이 장소에서 흔히 하는 활동과 체험 (야외 여가, 장비·물품 대여, 먹거리 등 다양한 경험 포함)
+- 이 장소와 관련해 한국에서 널리 알려진 음식·브랜드·문화
+- 대화가 자연스럽게 시작될 수 있는 상황
+
+주의: 브랜드명이나 장소명이 확실하지 않으면 일반 표현으로 대체할 것.
+      (예: 없는 브랜드 → "편의점", "푸드트럭", "한강변 카페")
+설명·번호·제목·주석·자기 수정 없이 자연스러운 문장으로만 출력한다.
+"""
+
+
+def build_location_context_prompt(location: str) -> str:
+    return LOCATION_CONTEXT_PROMPT.format(location=location)

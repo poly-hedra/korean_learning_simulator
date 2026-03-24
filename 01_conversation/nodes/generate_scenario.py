@@ -20,6 +20,8 @@ def _fallback_bundle(level: str, location: str) -> dict:
     mission_a = mission_by_level.get(level, f"{location}에서 필요한 정보를 얻고 싶어요.")
     return {
         "scenario_title": f"{location}에서의 대화",
+        # LLM 파싱 실패 시 학습자에게 보여줄 최소한의 상황 안내 문장
+        "scenario_description": f"{location}에서 만난 두 사람의 대화입니다.",
         "dialogue_function": ["일상 묻기"],
         "relationship_type": "낯선 사람",
         "personas": {
@@ -54,9 +56,12 @@ def generate_scenario(state: ConversationState) -> ConversationState:
     level = profile.get("korean_level", "Beginner")
     location = state.get("location", "한강")
 
+    location_context = state.get("location_context", "")
+
     raw = llm_service.generate_text(
         system_prompt=build_system_prompt(korean_level=level),
-        user_prompt=build_user_message(location=location, korean_level=level),
+        user_prompt=build_user_message(location=location, korean_level=level, location_context=location_context),
+        temperature=0.8,
     )
 
     # 파싱 실패에 대비해 폴백 번들을 먼저 준비하고, 성공 시 덮어쓴다.
@@ -68,6 +73,8 @@ def generate_scenario(state: ConversationState) -> ConversationState:
             parsed = json.loads(raw[start : end + 1])
             if isinstance(parsed, dict):
                 bundle["scenario_title"] = parsed.get("scenario_title", bundle["scenario_title"])
+                # 학습자용 상황 안내 문장; 없으면 폴백 문장 유지
+                bundle["scenario_description"] = parsed.get("scenario_description", bundle["scenario_description"])
                 bundle["dialogue_function"] = parsed.get("dialogue_function", bundle["dialogue_function"])
                 bundle["relationship_type"] = parsed.get("relationship_type", bundle["relationship_type"])
                 personas = parsed.get("personas")
@@ -77,6 +84,7 @@ def generate_scenario(state: ConversationState) -> ConversationState:
         pass
 
     state["scenario_title"] = bundle["scenario_title"]
+    state["scenario_description"] = bundle["scenario_description"]
     state["dialogue_function"] = bundle["dialogue_function"]
     state["relationship_type"] = bundle["relationship_type"]
     state["personas"] = bundle["personas"]

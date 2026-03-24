@@ -27,7 +27,7 @@ class LLMService:
         clipped = user_prompt.strip().replace("\n", " ")[:140]
         return f"{head} {clipped}"
 
-    def _call_upstage(self, system_prompt: str, user_prompt: str) -> str:
+    def _call_upstage(self, system_prompt: str, user_prompt: str, temperature: float = 0.4) -> str:
         """Upstage Chat Completions API를 호출한다.
 
         Upstage는 OpenAI 호환 chat completions 인터페이스를 제공하므로,
@@ -46,7 +46,7 @@ class LLMService:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                "temperature": 0.4,
+                "temperature": temperature,
                 "stream": False,
             },
             timeout=self.timeout_seconds,
@@ -65,7 +65,7 @@ class LLMService:
 
         return content
 
-    def generate_text(self, system_prompt: str, user_prompt: str) -> str:
+    def generate_text(self, system_prompt: str, user_prompt: str, temperature: float = 0.4) -> str:
         """가능하면 Upstage를 사용해 프롬프트에서 텍스트를 생성한다."""
 
         if not self.api_key:
@@ -75,6 +75,7 @@ class LLMService:
             return self._call_upstage(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
+                temperature=temperature,
             )
         except (httpx.HTTPError, ValueError):
             return self._fallback_response(user_prompt)
