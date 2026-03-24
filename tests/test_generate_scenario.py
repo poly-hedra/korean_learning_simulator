@@ -8,6 +8,13 @@
     python tests/test_generate_scenario.py --location 편의점 --runs 5
 """
 
+# `python tests/test_generate_scenario.py` 로 실행 시 Python이 스크립트 위치(tests/)를
+# sys.path에 추가하기 때문에 상위 패키지(services 등)를 찾지 못한다.
+# 아래 코드는 프로젝트 루트(korean_learning_simulator/)를 sys.path에 강제 추가한다.
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import argparse
 import json
 import time
