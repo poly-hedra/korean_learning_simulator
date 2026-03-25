@@ -28,14 +28,17 @@ from services.llm_service import llm_service
 from tests.based_prompts.education_based import (
     build_system_prompt as eb_build_system_prompt,
     build_user_message as eb_build_user_message,
+    clean_dialogue_functions as eb_clean_dialogue_functions,
 )
 
 build_location_context_prompt = import_module(
     "01_conversation.prompts.location_context"
 ).build_location_context_prompt
 
-build_system_prompt = import_module("01_conversation.prompts.scenario").build_system_prompt
-build_user_message = import_module("01_conversation.prompts.scenario").build_user_message
+_scenario_module = import_module("01_conversation.prompts.scenario")
+build_system_prompt = _scenario_module.build_system_prompt
+build_user_message = _scenario_module.build_user_message
+node_clean_dialogue_functions = _scenario_module.clean_dialogue_functions
 
 RESULTS_DIR = Path(__file__).parent / "results"
 
@@ -72,7 +75,15 @@ def run_once(location: str, level: str) -> dict:
 
     try:
         start, end = raw.find("{"), raw.rfind("}")
-        result["scenario_parsed"] = json.loads(raw[start : end + 1])
+        parsed = json.loads(raw[start : end + 1])
+        if isinstance(parsed, dict) and "dialogue_function" in parsed:
+            # LLM이 "[각자 목표] 취향 묻기" 같이 카테고리 태그를 값에 포함하거나
+            # "각자 목표" 처럼 카테고리명 자체를 출력하는 오류를 후처리로 정리한다.
+            # cleaned가 빈 리스트면 원본을 그대로 유지한다(테스트 결과 보존 우선).
+            cleaned = [f for f in node_clean_dialogue_functions(parsed["dialogue_function"]) if f]
+            if cleaned:
+                parsed["dialogue_function"] = cleaned
+        result["scenario_parsed"] = parsed
     except Exception:
         result["scenario_parsed"] = None
 
@@ -95,7 +106,14 @@ def run_once_education_based(location: str, level: str) -> dict:
 
     try:
         start, end = raw.find("{"), raw.rfind("}")
-        result["scenario_parsed"] = json.loads(raw[start : end + 1])
+        parsed = json.loads(raw[start : end + 1])
+        if isinstance(parsed, dict) and "dialogue_function" in parsed:
+            # node 방식과 동일한 이유로 후처리 적용.
+            # education_based는 별도 clean 함수를 import하지만 로직은 동일하다.
+            cleaned = [f for f in eb_clean_dialogue_functions(parsed["dialogue_function"]) if f]
+            if cleaned:
+                parsed["dialogue_function"] = cleaned
+        result["scenario_parsed"] = parsed
     except Exception:
         result["scenario_parsed"] = None
 
