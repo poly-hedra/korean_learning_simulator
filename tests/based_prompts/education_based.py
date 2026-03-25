@@ -109,8 +109,11 @@ SYSTEM_PROMPT = """
     [요청자-조력자] → A는 요청자, B는 조력자
       Example) A mission: "화장실이 어디에 있는지 알고 싶어요." / B mission: "화장실 위치를 알려 주고 싶어요."
     [각자 목표] → A·B 각자 궁금한 것을 mission으로
-      단, mission은 반드시 "상대방에 대해 알고 싶은 것"으로 작성할 것
-      Example) A mission: "상대방이 좋아하는 음식을 알고 싶어요." / B mission: "상대방의 주말 일과가 궁금해요."
+      mission은 "상대방에 대해 알고 싶은 것"으로 작성하되,
+      지금 함께하는 활동이나 {location} 상황이 대화의 계기가 될 것
+      Example) A mission: "상대방이 한강에서 자전거 타기를 좋아하는지 알고 싶어요."
+               B mission: "상대방이 좋아하는 한강 간식이 궁금해요."
+      Counter-example) "상대방의 주말 일과가 궁금해요." — {location} 상황과 무관한 일상 질문
     [자유 선택] → 상황에 맞게 선택
     [예외] 낯선 사람 관계 → dialogue_function에 관계없이 항상 요청자-조력자 구조
 
