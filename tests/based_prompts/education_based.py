@@ -172,3 +172,24 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
         relationship_type=relationship_type,
         dialogue_functions=dialogue_functions,
     )
+
+
+# 투두 (우선순위 순) — 이 파일을 기반으로 고도화 예정
+#
+# [1] topic 풀 설계 + CoT 고도화 + node 방식 폐기 (함께 진행)
+#     - 현재 하드코딩된 장소별 활동 목록을 topic 단위로 재편
+#       (예: "따릉이 타기", "수상 택시 타기")
+#     - topic은 SCK 급수별 대화 기능(dialogue_function)을 기준으로 설계되므로
+#       topic 풀 자체가 대화 기능을 이미 내포함
+#     - 장소 독립적 topic vs 장소 종속적 topic 구조 결정 필요
+#     - location_context 동적 생성 노드 제거 및 그래프 구조 단순화
+#
+# [2] vocabulary.json 동적 주입
+#     - 현재 하단 [참고 어휘] 하드코딩 → vocabulary.json 기반 동적 주입으로 전환
+#     - 대화 기능별 어휘 매핑 테이블(JSON) 별도 작성 필요 (전처리 1회 작업)
+#     - 급수·대화 기능 기준으로 어휘를 동적으로 뽑아 프롬프트에 주입
+#
+# [3] 어휘 설명 필드 추가
+#     - topic에 고유명사(따릉이 등) 포함 시 학습자를 위한 어휘 설명 필드 추가
+#     - 구 location_description 필드에 해당
+#     - [1] topic 구현 이후 진행
