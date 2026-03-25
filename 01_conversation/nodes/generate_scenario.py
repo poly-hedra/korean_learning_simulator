@@ -2,7 +2,7 @@
 
 import json
 
-from ..prompts.scenario import build_system_prompt, build_user_message
+from ..prompts.scenario import build_system_prompt, build_user_message, clean_dialogue_functions
 from services.llm_service import llm_service
 from ..state import ConversationState
 
@@ -75,7 +75,14 @@ def generate_scenario(state: ConversationState) -> ConversationState:
                 bundle["scenario_title"] = parsed.get("scenario_title", bundle["scenario_title"])
                 # 학습자용 상황 안내 문장; 없으면 폴백 문장 유지
                 bundle["scenario_description"] = parsed.get("scenario_description", bundle["scenario_description"])
-                bundle["dialogue_function"] = parsed.get("dialogue_function", bundle["dialogue_function"])
+                # LLM이 "[각자 목표] 취향 묻기" 처럼 카테고리 태그를 값에 포함시키거나
+                # "각자 목표" 처럼 카테고리명 자체를 넣는 경우가 있다.
+                # clean_dialogue_functions()로 태그를 제거하고,
+                # 제거 후 빈 문자열이 된 항목(실패 유형 2)은 if f 로 걸러낸다.
+                # cleaned가 빈 리스트가 되면 폴백값을 유지한다.
+                raw_funcs = parsed.get("dialogue_function", bundle["dialogue_function"])
+                cleaned = [f for f in clean_dialogue_functions(raw_funcs) if f]
+                bundle["dialogue_function"] = cleaned or bundle["dialogue_function"]
                 bundle["relationship_type"] = parsed.get("relationship_type", bundle["relationship_type"])
                 personas = parsed.get("personas")
                 if isinstance(personas, dict) and "A" in personas and "B" in personas:
