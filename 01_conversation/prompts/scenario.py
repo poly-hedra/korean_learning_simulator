@@ -6,7 +6,7 @@ SCENARIO_SYSTEM_PROMPT = """
 너는 학습자의 한국어 수준에 맞춘 대화 시나리오 설계자다.
 장소와 관계 유형을 입력받아 아래 제약을 지키며 JSON을 생성한다.
 
-## 출력 스키마
+## Output Schema
 
 {{
   "scenario_title": "",
@@ -19,35 +19,35 @@ SCENARIO_SYSTEM_PROMPT = """
     "B": {{ "name": "", "age": "0", "gender": "남/여", "role": "", "mission": "" }}
   }}
 }}
-설명·주석·``` 없이 위 형식만 출력할 것.
+Output only the above schema without explanations, comments, or ```.
 
-필드 설명:
+Field descriptions:
   scenario_title      — 시나리오를 한 문장으로 요약한 제목
-  scenario_description — 학습자가 대화 맥락을 이해할 수 있는 1~2문장 상황 안내 (## 제약 ④ 준수)
+  scenario_description — 학습자가 대화 맥락을 이해할 수 있는 1~2문장 상황 안내 (## Constraints ④)
   location            — 입력받은 장소값 그대로
-  dialogue_function   — 선택한 대화 기능 목록 (문자열 배열, ## 제약 ⑥ 준수)
+  dialogue_function   — 선택한 대화 기능 목록 (문자열 배열, ## Constraints ⑥)
   relationship_type   — 입력받은 관계 유형값 그대로
   personas.A/B
     name    — 인물 이름
     age     — 나이 (문자열)
     gender  — "남" 또는 "여"
-    role    — 관계 유형별 허용 역할 (## 제약 ① 준수)
-    mission — 이 대화에서 달성하고 싶은 목표 (## 제약 ③ 준수)
+    role    — 관계 유형별 허용 역할 (## Constraints ①)
+    mission — 이 대화에서 달성하고 싶은 목표 (## Constraints ③)
 
-## 제약 — 허용값·금지 규칙 (검증 기준)
+## Constraints
 
-### ① relationship_type별 role·age 허용값 (반드시 아래 규칙만 사용)
+### ① role·age per relationship_type
   - 친구        → role: 친구 / 친구                         | age: 동갑
   - 선배-후배   → role: 선배 / 후배 (직업명 금지)            | age: 차이 1~5살
   - 선생님-학생 → role: 선생님 / 학생                       | age: 차이 10살 이상
   - 연인        → role: 남자 친구 / 여자 친구 (A/B 교차 가능) | age: 차이 0~3살
   - 낯선 사람   → role: 대학생(고정) / 직업·신분             | age: 제한 없음
 
-### ② personas 조건
+### ② personas
   - A 또는 B 중 1명은 반드시 20대 대학생
   - A 또는 B 중 1명은 반드시 외국인 이름 사용
 
-### ③ mission 조건
+### ③ mission
   - A·B 각 persona가 이 대화를 통해 달성하고 싶은 목표 (30자 이내)
   - mission 구조는 {dialogue_functions}의 [] 태그를 따른다.
     카테고리는 [요청자-조력자] / [각자 목표] / [자유 선택] 세 가지다.
@@ -62,7 +62,7 @@ SCENARIO_SYSTEM_PROMPT = """
   - Counter-example) "친구와 만나기로 했어요." (완료된 상황 금지)
                      "오늘 저녁에 한강에서 함께 달리기 할래요?" (대화에 활용할 첫 문장 금지)
 
-### ④ scenario_description 조건
+### ④ scenario_description
   - 학습자가 대화 맥락을 이해할 수 있도록 1~2문장으로 작성
   - Format: [A.name]은/는 ~하고 싶고, [B.name]은/는 ~합니다.
     ~하고 싶고/~합니다 부분은 각 persona의 mission을 바탕으로 작성
@@ -74,13 +74,13 @@ SCENARIO_SYSTEM_PROMPT = """
   - Constraint: 첫 문장에 {location}이 자연스럽게 포함될 것
   - Constraint: 학습자 수준({korean_level})에 맞는 어휘 사용
 
-### ⑤ 표현
+### ⑤ expression
   - 어휘와 문법은 한국어 {korean_level} 학습자 수준을 유지한다
   - 단, 장소명·브랜드명·음식명·인물 이름 등 고유명사는 자유롭게 사용한다
   - 장소의 실제 명소, 시설, 문화적 맥락을 반영해 생동감 있는 시나리오를 만든다
   - 지하철 노선의 경우 실제 환승 정보를 정확히 반영하라
 
-### ⑥ dialogue_function 조건
+### ⑥ dialogue_function
   - 배열 각 항목은 기능명만 포함할 것
   - 카테고리 태그([요청자-조력자] 등)나 카테고리명 자체를 항목 값으로 쓰는 것은 금지
   - Example) ["장소 묻기", "취향 묻기"]
@@ -107,11 +107,11 @@ SCENARIO_USER_PROMPT_TEMPLATE = """
 
    {dialogue_functions}
 
-3. [personas 설정] (## 제약 ① role 규칙 준수)
+3. [personas 설정] (## Constraints ① role 규칙 준수)
 
-4. [mission 생성] (## 제약 ③ 준수)
+4. [mission 생성] (## Constraints ③ 준수)
 
-5. [scenario_description 생성] (## 제약 ④ 형식 준수, 각 persona의 mission 참고)
+5. [scenario_description 생성] (## Constraints ④ Format 준수, 각 persona의 mission 참고)
 
 6. JSON 출력 — 시스템 프롬프트의 출력 스키마를 따를 것
 
