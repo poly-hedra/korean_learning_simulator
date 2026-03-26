@@ -2,7 +2,6 @@
 
 from langgraph.graph import END, START, StateGraph
 
-from .nodes.generate_location_context import generate_location_context
 from .nodes.generate_scenario import generate_scenario
 from .state import ConversationState
 
@@ -15,11 +14,9 @@ def build_conversation_graph():
 
     graph = StateGraph(ConversationState)
 
-    graph.add_node("generate_location_context", generate_location_context)
     graph.add_node("generate_scenario", generate_scenario)
 
-    graph.add_edge(START, "generate_location_context")
-    graph.add_edge("generate_location_context", "generate_scenario")
+    graph.add_edge(START, "generate_scenario")
     graph.add_edge("generate_scenario", END)
 
     return graph.compile()

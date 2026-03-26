@@ -56,11 +56,9 @@ def generate_scenario(state: ConversationState) -> ConversationState:
     level = profile.get("korean_level", "Beginner")
     location = state.get("location", "한강")
 
-    location_context = state.get("location_context", "")
-
     raw = llm_service.generate_text(
-        system_prompt=build_system_prompt(korean_level=level),
-        user_prompt=build_user_message(location=location, korean_level=level, location_context=location_context),
+        system_prompt=build_system_prompt(),
+        user_prompt=build_user_message(location=location, level=level),
         temperature=0.8,
     )
 
