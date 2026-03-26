@@ -1,7 +1,5 @@
 """주간 복습 그래프용 상태 스키마."""
 
-from typing import TypedDict
-
 from states.base_state import BaseState
 
 

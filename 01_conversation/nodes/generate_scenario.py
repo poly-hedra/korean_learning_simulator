@@ -2,7 +2,11 @@
 
 import json
 
-from ..prompts.scenario import build_system_prompt, build_user_message, clean_dialogue_functions
+from ..prompts.scenario import (
+    build_system_prompt,
+    build_user_message,
+    clean_dialogue_functions,
+)
 from services.llm_service import llm_service
 from ..state import ConversationState
 
@@ -17,7 +21,9 @@ def _fallback_bundle(level: str, location: str) -> dict:
         "Intermediate": f"{location}에서 필요한 정보를 얻고 싶어요.",
         "Advanced": f"{location}에서 상대방과 자연스럽게 대화하고 싶어요.",
     }
-    mission_a = mission_by_level.get(level, f"{location}에서 필요한 정보를 얻고 싶어요.")
+    mission_a = mission_by_level.get(
+        level, f"{location}에서 필요한 정보를 얻고 싶어요."
+    )
     return {
         "scenario_title": f"{location}에서의 대화",
         # LLM 파싱 실패 시 학습자에게 보여줄 최소한의 상황 안내 문장
@@ -70,9 +76,13 @@ def generate_scenario(state: ConversationState) -> ConversationState:
         if start != -1 and end != -1 and end > start:
             parsed = json.loads(raw[start : end + 1])
             if isinstance(parsed, dict):
-                bundle["scenario_title"] = parsed.get("scenario_title", bundle["scenario_title"])
+                bundle["scenario_title"] = parsed.get(
+                    "scenario_title", bundle["scenario_title"]
+                )
                 # 학습자용 상황 안내 문장; 없으면 폴백 문장 유지
-                bundle["scenario_description"] = parsed.get("scenario_description", bundle["scenario_description"])
+                bundle["scenario_description"] = parsed.get(
+                    "scenario_description", bundle["scenario_description"]
+                )
                 # LLM이 "[각자 목표] 취향 묻기" 처럼 카테고리 태그를 값에 포함시키거나
                 # "각자 목표" 처럼 카테고리명 자체를 넣는 경우가 있다.
                 # clean_dialogue_functions()로 태그를 제거하고,
@@ -81,7 +91,9 @@ def generate_scenario(state: ConversationState) -> ConversationState:
                 raw_funcs = parsed.get("dialogue_function", bundle["dialogue_function"])
                 cleaned = [f for f in clean_dialogue_functions(raw_funcs) if f]
                 bundle["dialogue_function"] = cleaned or bundle["dialogue_function"]
-                bundle["relationship_type"] = parsed.get("relationship_type", bundle["relationship_type"])
+                bundle["relationship_type"] = parsed.get(
+                    "relationship_type", bundle["relationship_type"]
+                )
                 personas = parsed.get("personas")
                 if isinstance(personas, dict) and "A" in personas and "B" in personas:
                     bundle["personas"] = personas
