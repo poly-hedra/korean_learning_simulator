@@ -3,12 +3,12 @@ user_id: debug
 created_at: 2026-03-26T04:07:15.300131+00:00
 original_utterance_1: 선생님 진지 드셨어요?
 form	tag	lemma	normalized	matched	vocab_index	vocab_example	confidence
-선생	NNG	선생	선생	X			
-님	XSN	님	님	X			
+선생	NNG	선생	선생	X
+님	XSN	님	님	X
 진지	NNG	진지	진지	O	5_7560	진지를 드시다	1.00
-드시	VV	드시다	들다	X			
-었	EP	었	었	X			
-어요	EF	어요	어요	X			
+드시	VV	드시다	들다	X
+었	EP	었	었	X
+어요	EF	어요	어요	X
 
 low_confidence_tokens:
 form	tag	lemma	normalized	matched	vocab_index	confidence	utterance
@@ -28,106 +28,105 @@ user_id: poly
 created_at: 2026-03-26T07:32:15.727556+00:00
 original_utterance_1: 네 맞아요 수상택시가 한강에 새롭게 생겼다고 들어서 타보고 싶어요
 form	tag	lemma	normalized	matched	vocab_index	vocab_example	confidence
-네	IC	네	네	X			
+네	IC	네	네	X
 맞	VV	맞다	맞다	O	3_2276	손님을 맞다	0.80
-어요	EF	어요	어요	X			
+어요	EF	어요	어요	X
 수상	NNG	수상	수상	O	5_6857	수상 소감	0.90
 택시	NNG	택시	택시	O	1_682	택시를 타다	1.00
-가	JKS	가	가	X			
+가	JKS	가	가	X
 한강	NNP	한강	한강	O	2_1776	한강 공원	1.00
-에	JKB	에	에	X			
+에	JKB	에	에	X
 새롭	VA-I	새롭다	새롭다	O	2_1224	감회가 새롭다	1.00
-게	EC	게	게	X			
+게	EC	게	게	X
 생기	VV	생기다	생기다	O	2_1231	건물이 생기다	1.00
-었	EP	었	었	X			
-다고	EC	다고	다고	X			
+었	EP	었	었	X
+다고	EC	다고	다고	X
 듣	VV-I	듣다	듣다	O	1_187	음악을 듣다	1.00
-어서	EC	어서	어서	X			
+어서	EC	어서	어서	X
 타	VV	타다	타다	O	4_5478	때가 타다	0.95
-어	EC	어	어	X			
-보	VX	보다	보	X			
-고	EC	고	고	X			
-싶	VX	싶다	싶	X			
-어요	EF	어요	어요	X			
+어	EC	어	어	X
+보	VX	보다	보	X
+고	EC	고	고	X
+싶	VX	싶다	싶	X
+어요	EF	어요	어요	X
 
 original_utterance_2: 반포한강공원! 여기서 그렇게 멀지 않네요 안내해 주셔서 감사합니다
 form	tag	lemma	normalized	matched	vocab_index	vocab_example	confidence
-반포	NNP	반포	반포	X			
+반포	NNP	반포	반포	X
 한강	NNP	한강	한강	O	2_1776	한강 공원	1.00
 공원	NNG	공원	공원	O	1_51	공원에서 놀다	1.00
 여기	NP	여기	여기	O	1_448		1.00
-서	JKB	서	서	X			
+서	JKB	서	서	X
 그렇	VA-I	그렇다	그렇다	O	1_76	그런 사람	1.00
-게	EC	게	게	X			
+게	EC	게	게	X
 멀	VA	멀다	멀다	O	1_224	먼 나라	1.00
-지	EC	지	지	X			
-않	VX	않다	않	X			
-네요	EF	네요	네요	X			
+지	EC	지	지	X
+않	VX	않다	않	X
+네요	EF	네요	네요	X
 안내	NNG	안내	안내	O	1_419	안내 방송	1.00
-하	XSV	하	하	X			
-어	EC	어	어	X			
-주	VX	주다	주	X			
-시	EP	시	시	X			
-어서	EC	어서	어서	X			
+하	XSV	하	하	X
+어	EC	어	어	X
+주	VX	주다	주	X
+시	EP	시	시	X
+어서	EC	어서	어서	X
 감사	NNG	감사	감사	O	5_5731	국정 감사	0.90
-하	XSA	하	하	X			
-ᆸ니다	EF	ᆸ니다	ᆸ니다	X			
+하	XSA	하	하	X
+ᆸ니다	EF	ᆸ니다	ᆸ니다	X
 
 original_utterance_3: 한강다리는 건너는데 시간이 꽤 걸릴텐데 괜찮으신가요?
 form	tag	lemma	normalized	matched	vocab_index	vocab_example	confidence
 한강	NNP	한강	한강	O	2_1776	한강 공원	1.00
 다리	NNG	다리	다리	O	2_955	다리를 건너다	0.90
-는	JX	는	는	X			
+는	JX	는	는	X
 건너	VV	건너다	건너다	O	2_773	길을 건너다	1.00
-는	ETM	는	는	X			
+는	ETM	는	는	X
 데	NNB	데	데	O	3_2169	장소가 달라지다	1.00
 시간	NNG	시간	시간	O	1_368	시간이 걸리다	1.00
-이	JKS	이	이	X			
+이	JKS	이	이	X
 꽤	MAG	꽤	꽤	O	3_2039	꽤 멀다	1.00
 걸리	VV	걸리다	걸리다	O	1_35	그림이 걸리다	1.00
-ᆯ	ETM	ᆯ	ᆯ	X			
+ᆯ	ETM	ᆯ	ᆯ	X
 터	NNB	터	터	O	5_7748	터를 잡다	1.00
-이	VCP	이다	이	X			
-ᆫ데	EC	ᆫ데	ᆫ데	X			
+이	VCP	이다	이	X
+ᆫ데	EC	ᆫ데	ᆫ데	X
 괜찮	VA	괜찮다	괜찮다	O	1_55	성격이 괜찮다	1.00
-으시	EP	으시	으시	X			
-ᆫ가요	EF	ᆫ가요	ᆫ가요	X			
+으시	EP	으시	으시	X
+ᆫ가요	EF	ᆫ가요	ᆫ가요	X
 
 original_utterance_4: 날씨도 더운데 수고가 많으시네요
 form	tag	lemma	normalized	matched	vocab_index	vocab_example	confidence
 날씨	NNG	날씨	날씨	O	1_114	날씨가 좋다	1.00
-도	JX	도	도	X			
+도	JX	도	도	X
 덥	VA-I	덥다	덥다	O	1_168	날씨가 덥다	1.00
-은데	EC	은데	은데	X			
+은데	EC	은데	은데	X
 수고	NNG	수고	수고	O	2_1292	수고를 덜다	1.00
-가	JKS	가	가	X			
+가	JKS	가	가	X
 많	VA	많다	많다	O	1_208	돈이 많다	0.90
-으시	EP	으시	으시	X			
-네요	EF	네요	네요	X			
+으시	EP	으시	으시	X
+네요	EF	네요	네요	X
 
 original_utterance_5: 안내원님도 가끔 타시나요? 뉴스를 보니 이용객이 저조하다던데요
 form	tag	lemma	normalized	matched	vocab_index	vocab_example	confidence
 안내원	NNG	안내원	안내원	O	3_2786	안내원을 따라가다	1.00
-님	XSN	님	님	X			
-도	JX	도	도	X			
+님	XSN	님	님	X
+도	JX	도	도	X
 가끔	MAG	가끔	가끔	O	2_737	가끔 보다	1.00
 타	VV	타다	타다	O	4_5477	월급을 타다	0.70
-시	EP	시	시	X			
-나요	EF	나요	나요	X			
+시	EP	시	시	X
+나요	EF	나요	나요	X
 뉴스	NNG	뉴스	뉴스	O	1_145	뉴스를 보다	1.00
-를	JKO	를	를	X			
+를	JKO	를	를	X
 보	VV	보다	보다	O	1_289	밖을 보다	1.00
-니	EC	니	니	X			
-이용객	NNG	이용객	이용객	X			
-이	JKS	이	이	X			
+니	EC	니	니	X
+이용객	NNG	이용객	이용객	X
+이	JKS	이	이	X
 저조	NNG	저조	저조	O	6_9950	참여율 저조	1.00
-하	XSA	하	하	X			
-다고	EC	다고	다고	X			
+하	XSA	하	하	X
+다고	EC	다고	다고	X
 하	VV	하다	하다	O	1_709	운동을 하다	1.00
-던데요	EF	던데요	던데요	X			
+던데요	EF	던데요	던데요	X
 
 low_confidence_tokens:
 form	tag	lemma	normalized	matched	vocab_index	confidence	utterance
 맞	VV	맞다	맞다	O	3_2276	0.80	네 맞아요 수상택시가 한강에 새롭게 생겼다고 들어서 타보고 싶어요
 타	VV	타다	타다	O	4_5477	0.70	안내원님도 가끔 타시나요? 뉴스를 보니 이용객이 저조하다던데요
-

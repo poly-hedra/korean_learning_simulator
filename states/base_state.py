@@ -27,9 +27,13 @@ class BaseState(TypedDict, total=False):
     location: str
     # generate_scenario 노드가 채운다.
     # 대화 워크플로우뿐 아니라 평가 워크플로우 등 여러 곳에서 시나리오 맥락을 참조할 수 있도록 BaseState에 선언.
-    scenario_title: str          # UI 카드·캐싱 키로 사용
-    scenario_description: str    # 학습자용 상황 안내 문장; 평가 시 "의도한 상황"을 확인하는 기준으로도 활용
-    personas: dict[str, dict[str, Any]]  # 페르소나 필드: job→role, goal→mission 으로 변경
+    scenario_title: str  # UI 카드·캐싱 키로 사용
+    scenario_description: (
+        str  # 학습자용 상황 안내 문장; 평가 시 "의도한 상황"을 확인하는 기준으로도 활용
+    )
+    personas: dict[
+        str, dict[str, Any]
+    ]  # 페르소나 필드: job→role, goal→mission 으로 변경
     conversation_log: list[DialogueTurn]
     turn_count: int
     turn_limit: int
