@@ -49,7 +49,7 @@ Field descriptions:
 
 ### ③ mission
   - A·B 각 persona가 이 대화를 통해 달성하고 싶은 목표 (30자 이내)
-  - mission 구조는 {dialogue_functions}의 [] 태그를 따른다.
+  - mission 구조는 {{dialogue_functions}}의 [] 태그를 따른다.
     카테고리는 [요청자-조력자] / [각자 목표] / [자유 선택] 세 가지다.
     [요청자-조력자] → A는 요청자, B는 조력자
       Example) A mission: "화장실이 어디에 있는지 알고 싶어요." / B mission: "화장실 위치를 알려 주고 싶어요."
@@ -68,10 +68,10 @@ Field descriptions:
     ~하고 싶고/~합니다 부분은 각 persona의 mission을 바탕으로 작성
     relationship_type은 첫 문장에 자연스러운 한국어로 녹여 표현할 것
     Example)
-      친구 / 연인        → "{location}에서 만난 [relationship_type]인 두 사람의 대화입니다."
-      선배-후배 / 선생님-학생 → "{location}에서 함께하는 [A.role]과 [B.role]의 대화입니다."
-      낯선 사람          → "{location}에서 처음 만난 두 사람의 대화입니다."
-  - Constraint: 첫 문장에 {location}이 자연스럽게 포함될 것
+        친구 / 연인        → "{{location}}에서 만난 [relationship_type]인 두 사람의 대화입니다."
+        선배-후배 / 선생님-학생 → "{{location}}에서 함께하는 [A.role]과 [B.role]의 대화입니다."
+        낯선 사람          → "{{location}}에서 처음 만난 두 사람의 대화입니다."
+      - Constraint: 첫 문장에 {{location}}이 자연스럽게 포함될 것
   - Constraint: 학습자 수준({korean_level})에 맞는 어휘 사용
 
 ### ⑤ expression
@@ -166,17 +166,39 @@ LEVEL_MAP: dict[str, str] = {
 DIALOGUE_FUNCTIONS: dict[str, dict[str, list[str]]] = {
     "1급": {
         "요청자-조력자": ["장소 묻기", "물건 사기", "음식 주문하기", "시간 묻기"],
-        "각자 목표":     ["일상 묻기", "취향 묻기", "경험 묻기",
-                         "기분 묻기", "날씨/풍경 묻기", "어제/주말에 한 일 묻기"],
-        "자유 선택":    ["자기소개", "약속 정하기"],
+        "각자 목표": [
+            "일상 묻기",
+            "취향 묻기",
+            "경험 묻기",
+            "기분 묻기",
+            "날씨/풍경 묻기",
+            "어제/주말에 한 일 묻기",
+        ],
+        "자유 선택": ["자기소개", "약속 정하기"],
     },
     "2급": {
-        "요청자-조력자": ["음식 주문하기", "물건 비교하기", "교환/환불 요청하기",
-                         "교통/길 찾기", "전화 통화하기", "허락 구하기",
-                         "도움 요청하기", "거절하기"],
-        "각자 목표":     ["안부/근황 묻기", "외모/성격 묘사하기",
-                         "가족/고향 소개하기", "여행 계획 말하기"],
-        "자유 선택":    ["감정 표현하기", "건강 상태 설명하기", "모임 제안하기", "미래 계획 말하기"],
+        "요청자-조력자": [
+            "음식 주문하기",
+            "물건 비교하기",
+            "교환/환불 요청하기",
+            "교통/길 찾기",
+            "전화 통화하기",
+            "허락 구하기",
+            "도움 요청하기",
+            "거절하기",
+        ],
+        "각자 목표": [
+            "안부/근황 묻기",
+            "외모/성격 묘사하기",
+            "가족/고향 소개하기",
+            "여행 계획 말하기",
+        ],
+        "자유 선택": [
+            "감정 표현하기",
+            "건강 상태 설명하기",
+            "모임 제안하기",
+            "미래 계획 말하기",
+        ],
     },
 }
 
@@ -230,10 +252,14 @@ def build_system_prompt(korean_level: str = "Beginner") -> str:
 
     korean_level을 LEVEL_MAP으로 급수로 변환해 프롬프트에 주입한다.
     """
-    return SCENARIO_SYSTEM_PROMPT.format(korean_level=LEVEL_MAP.get(korean_level, "1급"))
+    return SCENARIO_SYSTEM_PROMPT.format(
+        korean_level=LEVEL_MAP.get(korean_level, "1급")
+    )
 
 
-def build_user_message(location: str, korean_level: str = "Beginner", location_context: str = "") -> str:
+def build_user_message(
+    location: str, korean_level: str = "Beginner", location_context: str = ""
+) -> str:
     """유저 프롬프트를 반환한다.
 
     관계 유형은 RELATIONSHIP_TYPES에서 랜덤으로 선택되므로
@@ -246,8 +272,7 @@ def build_user_message(location: str, korean_level: str = "Beginner", location_c
     # DIALOGUE_FUNCTIONS[level_str]의 카테고리별 항목을
     # "[카테고리] 기능1 | 기능2 | ..." 형태로 조합해 {dialogue_functions}에 주입
     dialogue_functions = "\n   ".join(
-        f"[{category}] {' | '.join(items)}"
-        for category, items in funcs.items()
+        f"[{category}] {' | '.join(items)}" for category, items in funcs.items()
     )
     return SCENARIO_USER_PROMPT_TEMPLATE.format(
         korean_level=level_str,
