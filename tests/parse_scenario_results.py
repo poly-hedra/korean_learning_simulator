@@ -1,10 +1,10 @@
-"""education_based 단독 모드 결과 JSON → CSV 변환 스크립트.
+"""시나리오 결과 JSON → CSV 변환 스크립트.
 
 구글 스프레드시트에 붙여넣기 위한 용도.
 
 실행:
-    python tests/parse_eb_results.py
-    python tests/parse_eb_results.py --file tests/results/scenario_한강_education_based_xxx.json
+    python tests/parse_scenario_results.py
+    python tests/parse_scenario_results.py --file tests/results/scenario_한강_xxx.json
 """
 
 import sys
