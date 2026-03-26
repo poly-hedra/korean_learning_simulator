@@ -96,7 +96,7 @@ def main() -> None:
     RESULTS_DIR.mkdir(exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = RESULTS_DIR / f"scenario_{args.location}_{VERSION}_{timestamp}.json"
+    filename = RESULTS_DIR / f"scenario_{args.location}_{timestamp}.json"
 
     output = {
         "meta": {

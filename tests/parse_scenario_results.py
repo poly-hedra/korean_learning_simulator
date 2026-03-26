@@ -59,12 +59,12 @@ def main() -> None:
         json_path = Path(args.file)
     else:
         files = sorted(
-            RESULTS_DIR.glob("*education_based*.json"),
+            RESULTS_DIR.glob("scenario_*.json"),
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )
         if not files:
-            print("education_based 결과 파일을 찾을 수 없습니다.")
+            print("결과 파일을 찾을 수 없습니다.")
             return
         json_path = files[0]
         print(f"파일 자동 선택: {json_path.name}")
