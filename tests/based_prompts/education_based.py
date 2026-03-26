@@ -5,8 +5,10 @@
 고도화 완료 시 01_conversation/prompts/scenario.py 를 이 버전으로 교체한다.
 """
 
+import json
 import random
 import re
+from pathlib import Path
 
 VERSION = "education_based"
 
@@ -73,7 +75,7 @@ PERSONA_VOCAB: dict[str, list[str]] = {
 }
 # 관계 유형이 "낯선 사람"일 때 B 페르소나의 직업·신분 어휘로 사용.
 # 낯선 사람 외 관계에는 주입하지 않는다.
-# vocabulary.json에 직업명이 미포함되어 있으므로 별도 관리. (To-do [2] 참고)
+# vocabulary.json에 직업명이 미포함되어 있으므로 별도 관리. 
 # 2급 어휘는 추후 추가 예정.
 #
 # [설계 방향] 장소 한정 역할(따릉이 대여소 직원, 한강 관리소 직원 등)은
@@ -116,13 +118,18 @@ _ACTIVITIES: dict[str, dict[str, list[str]]] = {
         ],
     },
 }
-# 장소별 활동 풀(_ACTIVITIES) — LLM이 적합한 활동을 고르게 선택하도록 돕는 참고 목록.
+# 장소별 활동 풀(_ACTIVITIES) — LLM이 자연스러운 활동을 고르도록 돕는 가드레일.
 #
-# [역할]
-#   LLM이 장소에서 가능한 활동을 충분히 알지 못하거나 task 중심 활동에 편중될 수 있으므로
-#   활동 풀을 명시적으로 제공한다.
-#   - [구매/주문], [시설 이용/위치]: 장소 특화 정보 — 없으면 LLM이 스스로 떠올리기 어려움
-#   - [경험/일상], [감상/휴식]: 균형추 — 소프트한 대화 기능(기분·취향 묻기 등) 선택 확률 확보
+# [설계 의도]
+#   일반 활동과 장소 특화 활동을 카테고리로 구분해 의도적으로 섞어 놓은 구조다.
+#   LLM에게 풀 전체를 주면 task 중심 활동(구매·시설 이용)에 편중되므로,
+#   카테고리별 샘플링으로 매 호출마다 두 종류가 균형 있게 뽑히도록 강제한다.
+#   → 카테고리 구조 자체가 가드레일 역할을 한다.
+#
+#   - [구매/주문], [시설 이용/위치], [스포츠/활동]: 장소 특화 활동
+#       → 방치하면 LLM이 task 중심으로 쏠림
+#   - [경험/일상], [감상/휴식]: 일반 활동 (어느 장소에서든 가능)
+#       → 소프트한 대화 기능(기분·취향 묻기 등)이 선택되도록 균형추 역할
 #
 # [활동명 수준]
 #   행위 수준으로 작성 ("편의점에서 간식 사기") — 구체적 물품은 포함하지 않는다.
@@ -130,15 +137,128 @@ _ACTIVITIES: dict[str, dict[str, list[str]]] = {
 #
 # [주입 방식]
 #   build_user_message() 호출 시 카테고리별 n개씩 샘플링해 {activities}에 주입.
-#   → 6개 카테고리 × 2개 = 매 호출마다 12개의 균형 잡힌 서브셋 제공.
-#   장소별 편중이 확인되면 _ACTIVITY_CAUTIONS에 Caution 문구를 추가해 프롬프트 레벨에서 제어. [현재 비활성화]
+#   → 5개 카테고리 × 2개 = 매 호출마다 10개의 균형 잡힌 서브셋 제공.
+#   편중 제어는 카테고리별 샘플링(_get_activities)으로 대응한다.
 
 
-# _ACTIVITY_CAUTIONS: dict[str, str] = {
-#     "한강": "자전거·돗자리 관련 활동에 편중되지 말 것.",
-# }
-# 장소별로 LLM이 특정 활동에 과도하게 편중되는 경우 여기에 추가한다.
-# 해당 장소의 주의 문구가 없으면 빈 문자열이 주입된다.
+_LOCATION_VOCAB: dict[str, dict[str, list[str]]] = {
+    "한강": {
+        "시설명": [
+            "반포 무지개 분수", "따릉이 대여소", "오리배 선착장", "한강 유람선",
+            "한강 수영장", "바비큐 구역", "피크닉 용품 대여소", "서울 달",
+            "푸드트럭 거리", "자전거 도로", "산책로", "63빌딩", "국회의사당", "여의도 공원"
+        ],
+        "역할": [
+            "따릉이 대여소 직원", "오리배 선착장 직원", "유람선 안내원",
+            "피크닉 용품 대여소 직원", "한강공원 안내소 직원",
+            "수영장 안내원", "푸드트럭 사장님",
+        ],
+    },
+}
+# 장소별 시설명·역할 어휘.
+#
+# [구조]
+#   dict[장소명, dict[카테고리, list[어휘]]]
+#   카테고리는 현재 두 가지:
+#     "시설명" — 장소 고유 시설·건물명 (LLM이 스스로 떠올리기 어려운 고유명사)
+#               "한강에서 보이는 건물 묻기" 등 선택 시 mission에 활용됨
+#     "역할"   — 낯선 사람 관계에서 B 페르소나로 쓸 수 있는 장소 한정 직함
+#               PERSONA_VOCAB의 일반 직업(회사원, 의사 등)과 달리
+#               해당 장소에서만 자연스럽게 등장하는 역할만 포함
+#
+# [주입 방식]
+#   build_user_message()에서 카테고리별로 레이블을 붙여 참고 어휘 섹션에 주입.
+#   예) "장소 시설명: 반포 무지개 분수, 따릉이 대여소, ..."
+#       "장소 한정 역할: 따릉이 대여소 직원, 오리배 선착장 직원, ..."
+#
+# [역할 분리 기준]
+#   _ACTIVITIES               → 일반 + 장소 특화 활동을 섞은 가드레일 (행위 수준, 샘플링 주입)
+#   _LOCATION_VOCAB["시설명"]  → 장소 고유명사 (어휘 수준, 전체 주입 — 활동·mission 작성 힌트)
+#   _LOCATION_VOCAB["역할"]   → 장소 한정 직함 (어휘 수준, 전체 주입 — 낯선 사람 B 페르소나 후보)
+#   PERSONA_VOCAB             → 장소 무관 일반 직업 (어휘 수준, 전체 주입 — 낯선 사람 B 페르소나 후보)
+#
+# [추후 확장(to-be)]
+#   설명이 필요한 시설은 ("이름", "설명(topic-description)") tuple로 확장 예정.
+#   장소 추가 시 동일 구조로 키만 늘리면 됨.
+
+_VOCAB_PATH = Path(__file__).parent.parent.parent / "database" / "vocabulary.json"
+# __file__ = tests/based_prompts/education_based.py
+# .parent       → tests/based_prompts/
+# .parent.parent → tests/
+# .parent.parent.parent → 프로젝트 루트 (korean_learning_simulator/)
+# / "database" / "vocabulary.json" → database/vocabulary.json
+
+_VOCAB_CACHE: list[dict] | None = None
+# 모듈 로드 시점에 None으로 초기화.
+# _load_vocab() 최초 호출 시 JSON을 읽어 채운 뒤, 이후 호출에서는 재사용한다.
+# → 같은 프로세스 안에서 build_user_message()를 여러 번 호출해도 파일 I/O는 1회.
+
+
+def _load_vocab() -> list[dict]:
+    """vocabulary.json을 읽어 반환한다. 두 번째 호출부터는 캐시를 반환한다.
+
+    vocabulary.json 구조 (10,635개 항목):
+      [
+        { "index": "1_1", "word": "가게", "kind": "명사", "example": "가게에 가다" },
+        { "index": "2_5", "word": "간호사", "kind": "명사", "example": "..." },
+        ...
+      ]
+      - index 앞자리 숫자 = 급수 ("1_" → 1급, "2_" → 2급, …)
+      - kind 필드 = 품사 (단, 공백 오염 있음 → 사용 시 .strip() 필요)
+    """
+    global _VOCAB_CACHE
+    if _VOCAB_CACHE is None:
+        with open(_VOCAB_PATH, encoding="utf-8") as f:
+            _VOCAB_CACHE = json.load(f)
+    return _VOCAB_CACHE
+
+
+def _get_general_vocab(level_str: str, kinds: list[str] | None = None) -> str:
+    """vocabulary.json에서 급수·품사 필터 후 프롬프트용 문자열 반환.
+
+    Args:
+        level_str: LEVEL_MAP으로 변환된 급수 문자열. 예) "1급", "3급", "5급"
+        kinds:     포함할 품사 목록. 기본값 ["동사", "형용사"].
+                   명사까지 추가하려면 ["명사", "동사", "형용사"] 전달.
+
+    Returns:
+        품사별로 그룹화된 어휘 문자열.
+        예)
+          동사: 가다, 오다, 알다, ...
+          형용사: 좋다, 가깝다, 멀다, ...
+
+        kind에 해당하는 단어가 하나도 없으면 해당 줄은 생략된다.
+
+    동작 흐름:
+        1. prefix 생성: "1급" → "1_"  (index 앞자리와 매칭하기 위한 변환)
+        2. _load_vocab()으로 전체 어휘 목록 로드 (캐시 활용)
+        3. grouped dict 초기화: {"동사": [], "형용사": []}
+        4. 전체 어휘 순회
+           - index가 prefix로 시작하지 않으면 skip (급수 필터)
+           - kind.strip()이 grouped 키에 없으면 skip (품사 필터)
+           - 통과하면 해당 품사 리스트에 word 추가
+        5. 품사별로 "동사: word1, word2, ..." 형태로 join 후 반환
+
+    주의:
+        vocabulary.json의 kind 필드에 공백이 섞인 경우가 있어 .strip()으로 정규화한다.
+        예) "동사 " → "동사"
+    """
+    if kinds is None:
+        kinds = ["동사", "형용사"]
+    prefix = level_str.replace("급", "_")   # "1급" → "1_", "3급" → "3_"
+    vocab = _load_vocab()
+    grouped: dict[str, list[str]] = {k: [] for k in kinds}
+    for entry in vocab:
+        if not entry["index"].startswith(prefix):
+            continue                         # 급수 불일치 → 건너뜀
+        kind = entry["kind"].strip()         # 공백 오염 정규화
+        if kind in grouped:
+            grouped[kind].append(entry["word"])
+    # words가 빈 리스트인 품사는 출력에서 제외 (if words)
+    header = "일반 어휘 (mission·scenario_description 작성 시 어울리는 단어를 골라 사용할 것)"
+    lines = [f"{k}: {', '.join(words)}" for k, words in grouped.items() if words]
+    return header + "\n" + "\n".join(lines)
+
 
 
 # ================================================================
@@ -300,8 +420,8 @@ _USER_PROMPT_TEMPLATE = """
 
 ## 참고 어휘
 {persona_vocab}
-동사: 가다, 오다, 알다, 모르다, 찾다, 묻다, 사다, 먹다, 마시다, 만나다, 기다리다, 좋아하다, 싫어하다, 지내다, 다니다
-형용사: 좋다, 가깝다, 멀다, 많다, 싸다, 비싸다, 맛있다, 바쁘다, 괜찮다
+{location_vocab}
+{general_vocab}
 """
 
 # ----------------------------------------------------------------
@@ -346,8 +466,7 @@ def _get_activities(location: str, n_per_category: int = 2) -> str:
     """_ACTIVITIES에서 location에 해당하는 카테고리별 활동을 샘플링해 반환한다.
 
     Returns:
-        activities_str   — 프롬프트용 활동 목록 문자열 ({activities} 자리에 주입)
-        # activity_caution — 장소별 편중 주의 문구 ({activity_caution} 자리에 주입, 없으면 "") [비활성화]
+        activities_str — 프롬프트용 활동 목록 문자열 ({activities} 자리에 주입)
 
     카테고리별로 n_per_category개씩 무작위 샘플링해 균형 잡힌 서브셋을 제공한다.
     location이 _ACTIVITIES에 없으면 빈 문자열을 반환한다.
@@ -359,8 +478,41 @@ def _get_activities(location: str, n_per_category: int = 2) -> str:
     for items in categories.values():
         sampled.extend(random.sample(items, min(n_per_category, len(items))))
     activities_str = ", ".join(sampled)
-    # activity_caution = _ACTIVITY_CAUTIONS.get(location, "")
-    return activities_str  # , activity_caution
+    return activities_str
+
+
+def _get_persona_vocab(level_str: str, location: str) -> list[str]:
+    """낯선 사람 B 페르소나 후보 어휘를 일반 + 장소 한정 역할 합산해 반환한다.
+
+    Args:
+        level_str: "1급" / "3급" / "5급" — PERSONA_VOCAB 키로 사용
+        location:  장소명 — _LOCATION_VOCAB["역할"] 조회에 사용
+
+    Returns:
+        일반 직업(PERSONA_VOCAB) + 장소 한정 직함(_LOCATION_VOCAB["역할"])이
+        합산된 단일 리스트.
+        예) ["회사원", "의사", ..., "따릉이 대여소 직원", "오리배 선착장 직원", ...]
+
+    [왜 이 함수가 필요한가?]
+        기존에는 build_user_message()가 PERSONA_VOCAB만 직접 참조했다.
+        _LOCATION_VOCAB["역할"]은 location_vocab(참고 어휘)에만 들어가 있어서
+        낯선 사람 B 페르소나 후보가 두 군데로 분산되어 있었다.
+        이 함수가 두 소스를 합산해 "인물 (낯선 사람 B 전용)" 레이블 아래
+        단일 항목으로 제공하므로 LLM이 한 곳만 보면 된다.
+
+    build_user_message()에서 relationship_type == "낯선 사람"일 때만 호출된다.
+    location_vocab은 "시설명"만 담당하므로 역할 어휘의 이중 주입은 발생하지 않는다.
+    """
+    # ① 급수별 일반 직업 목록. 해당 급수 미정의 시 "1급"으로 폴백.
+    #    (현재 PERSONA_VOCAB은 "1급"만 정의됨 — 2급 이상은 To-do [4])
+    general = PERSONA_VOCAB.get(level_str, PERSONA_VOCAB["1급"])
+
+    # ② 장소 한정 직함. location이 없거나 "역할" 키가 없으면 빈 리스트
+    #    → 빈 리스트면 general만 반환하게 됨 (한강 외 장소는 현재 이 케이스)
+    location_roles = _LOCATION_VOCAB.get(location, {}).get("역할", [])
+
+    # ③ 일반 직업 → 장소 역할 순으로 이어붙여 반환
+    return general + location_roles
 
 
 def build_system_prompt() -> str:
@@ -378,21 +530,27 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
         for category, items in funcs.items()
     )
     activities = _get_activities(location)
-    # activity_caution = ...  # _ACTIVITY_CAUTIONS 비활성화 중
-    caution_str = ""
     if relationship_type == "낯선 사람":
-        vocab_list = PERSONA_VOCAB.get(level_str, PERSONA_VOCAB["1급"])
-        persona_vocab = "인물 (낯선 사람 B 전용): " + ", ".join(vocab_list) + "\n"
+        vocab_list = _get_persona_vocab(level_str, location)
+        persona_vocab = "인물 (낯선 사람 B 전용 — B의 role 선택 시 이 목록에서 고를 것): " + ", ".join(vocab_list) + "\n"
     else:
         persona_vocab = ""
+    loc_vocab = _LOCATION_VOCAB.get(location, {})
+    facilities = loc_vocab.get("시설명", [])
+    # "역할"은 _get_persona_vocab()을 통해 persona_vocab으로만 주입.
+    # → 낯선 사람 아닌 관계에서는 역할 어휘가 노출되지 않음.
+    # → 낯선 사람일 때도 location_vocab·persona_vocab 이중 주입 없음.
+    location_vocab = ("장소 시설명 (mission·scenario_description 작성 시 활용): " + ", ".join(facilities) + "\n") if facilities else ""
+    general_vocab = _get_general_vocab(level_str)
     return _USER_PROMPT_TEMPLATE.format(
         level=level_str,
         location=location,
         relationship_type=relationship_type,
         dialogue_functions=dialogue_functions,
         activities=activities,
-        activity_caution=caution_str,
         persona_vocab=persona_vocab,
+        location_vocab=location_vocab,
+        general_vocab=general_vocab,
     )
 
 
@@ -404,26 +562,27 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 # │  build_user_message(location, level) 호출                   │
 # └──────────────────────────┬──────────────────────────────────┘
 #                            │
-#          ┌─────────────────┼──────────────────────┐
-#          ▼                 ▼                      ▼
-#   [관계 유형 결정]   [활동 샘플링]         [대화 기능 목록 구성]
-#   _RELATIONSHIP_TYPES  _ACTIVITIES           DIALOGUE_FUNCTIONS
-#   에서 random.choice   [location][category]  [level]의 카테고리별
-#   → relationship_type  에서 카테고리당 2개    기능 목록을 포맷팅
-#                        random.sample         → dialogue_functions
-#                        → activities_str
-#                        # + _ACTIVITY_CAUTIONS [비활성화]
-#                        # → activity_caution   [비활성화]
-#          │                 │                      │
-#          └─────────────────┼──────────────────────┘
+#     ┌──────────┬───────────┼───────────┬──────────────┐
+#     ▼          ▼           ▼           ▼              ▼
+# [관계 유형]  [활동]    [대화 기능]  [장소 어휘]   [일반 어휘]
+# _RELATIONSHIP  _ACTIVITIES  DIALOGUE_   _LOCATION_    _get_general_
+# _TYPES에서     [location]   FUNCTIONS   VOCAB         vocab(level)
+# random.choice  [category]   [level]     [location]    vocabulary.json
+# → relationship 카테고리당   카테고리별  ["시설명"]    에서 급수·품사(동사, 형용사)
+#   _type        2개 샘플링   포맷팅      만 전체 주입  필터 후 전체 주입
+#                → activities → dialogue  → location    → general_vocab
+#                              _functions   _vocab
+#     │          │           │            │              │
+#     └──────────┴───────────┼────────────┴──────────────┘
 #                            │
-#          ┌─────────────────┼──────────────────────┐
-#          ▼                 ▼                      ▼
+#          ┌─────────────────┼────────────────────┐
+#          ▼                 ▼                    ▼
 #   [인물 어휘 결정]   _USER_PROMPT_TEMPLATE 에 변수 주입
 #   relationship_type  {level} {location} {relationship_type}
-#   == "낯선 사람"     {activities} {dialogue_functions} {persona_vocab}
-#   → PERSONA_VOCAB    # {activity_caution} [비활성화]
-#     [level] 주입
+#   == "낯선 사람"     {activities} {dialogue_functions}
+#   → _get_persona_  {persona_vocab} {location_vocab} {general_vocab}
+#     vocab(level,
+#     location) 주입
 #   else → ""
 #                            │
 #                            ▼
@@ -450,97 +609,42 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 # - 학습자 수준: LEVEL_MAP으로 변환 → {level} 주입
 # - 대화 기능 목록: DIALOGUE_FUNCTIONS[급수] 카테고리별 포맷팅 → {dialogue_functions} 주입
 # - 장소 활동 목록: _ACTIVITIES[location] 카테고리별 2개 샘플링 → {activities} 주입
-# - 편중 제어: _ACTIVITY_CAUTIONS[location] → {activity_caution} 주입 [현재 비활성화]
-# - 인물 어휘: PERSONA_VOCAB[급수] → "낯선 사람"일 때만 {persona_vocab} 주입
-# - 참고 어휘(동사·형용사): 하드코딩 → [2] 완료 후 동적 주입 예정
+# - 인물 어휘: _get_persona_vocab(level, location) — 일반 직업 + 장소 역할 합산
+#              → "낯선 사람"일 때만 {persona_vocab} 주입
+# - 장소 어휘: _LOCATION_VOCAB[location]["시설명"] 전체 → {location_vocab} 주입
+#              ("역할"은 persona_vocab으로 분리, location_vocab에는 포함 안 됨)
+# - 일반 어휘: vocabulary.json에서 급수·품사(동사·형용사) 필터 → {general_vocab} 주입
 
 # [LLM이 처리]
 # 0. 입력 확인 — relationship_type / 활동 풀 / dialogue_function 풀 전체 확정 (주어진 값 그대로)
 # 1. 활동 풀에서 relationship_type과 자연스러운 활동 선택
 # 2. 선택한 활동에 맞는 dialogue_function을 dialogue_function 풀에서 확정
 # 3. personas 설정 (## 제약 ① 준수)
-# 4. mission 생성 (## 제약 ③ 준수)
+# 4. mission 생성 (## 제약 ③ 준수, 참고 어휘 활용)
 # 5. scenario_description 생성 (## 제약 ④ 준수, mission 참고)
 # 6. JSON 출력
 
 # ================================================================
-# To-do 및 To-be
+# To-do
 # ================================================================
 #
-# [2] vocabulary 동적 주입 ← [1] 완료 후
+# [1] general_vocab 명사 포함 여부 검토
+#   현재: 동사·형용사만 주입 (1급 기준 255개)
+#   검토: 명사 추가 시 어휘 수 대폭 증가 → LLM이 더 구체적인 mission을 작성할 수 있으나
+#         프롬프트 길이 증가. 실제 출력 품질 보고 결정.
 #
-# as-is: 참고 어휘 프롬프트 하단에 하드코딩 (1급 기준 고정)
-#         → 급수 추가·수정 시 프롬프트 직접 수정 필요
-#         → 낯선 사람 아닌 관계에도 인물 어휘 불필요하게 주입
-#         → 2급 이상으로 확장 시 인물/어휘 모두 수동 교체 필요
+# [2] 장소 확장
+#   현재: _ACTIVITIES·_LOCATION_VOCAB 모두 한강만 존재
+#   to-do: 지하철·편의점 등 서비스 전체 장소로 확장
 #
-# 실제 vocabulary.json 구조 (10,635개):
-#   [
-#     { "index": "1_1", "word": "가게", "kind": "명사", "example": "가게에 가다" },
-#     { "index": "2_5", "word": "간호사", "kind": "명사", "example": "..." },
-#     ...
-#   ]
-#   → index 앞자리 = 급수 ("1_" → 1급, "2_" → 2급)
-#   → kind 필드로 품사 구분 (단, 공백 포함 오염 있음 → .strip() 필요)
-#   → "인물" 카테고리 없음 → 직업명은 vocabulary.json에 미포함
+# [3] PERSONA_VOCAB 2급 이상 확장
+#   현재: 1급만 정의됨 (_get_persona_vocab()에서 해당 급수 없으면 "1급" 폴백)
+#   to-do: 2급 이상 급수별 직업·신분 어휘 큐레이션 추가
 #
-# to-be:
-#   ① 일반 어휘 — vocabulary.json에서 동적 필터링
-#     → index.startswith("{급수}_") 로 급수 필터
-#     → kind.strip() in ["명사", "동사", "형용사"] 로 품사 필터
-#     → 필터된 단어 목록을 프롬프트에 주입
-#     → LLM이 대화 기능({dialogue_function})을 보고 어울리는 단어 선택 (열린 구조)
+# [4] DIALOGUE_FUNCTIONS 3급 이상 확장
+#   현재: 1·2급 수동 분류 완료
+#   to-do: 3급 이상 추가 시 동일하게 카테고리(요청자-조력자/각자 목표/자유 선택) 수동 분류 필요
 #
-#   ② 인물 어휘 — 급수별 별도 관리 (vocabulary.json에 없음)
-#     → 직업명·신분어는 vocabulary.json에 포함 안 되어 있음
-#     → 별도 dict 또는 파일로 급수별 큐레이션 필요
-#     → 예:
-#       PERSONA_VOCAB = {
-#         "1급": ["회사원", "의사", "가게 주인", "편의점 직원", "아주머니", "아저씨", ...],
-#         "2급": ["간호사", "경찰관", "선생님", "은행원", ...],
-#       }
-#     → 관계 유형이 "낯선 사람"일 때만 해당 급수 인물 어휘 주입
-#
-#   검증 후: 어휘 선택이 여전히 느슨하면 대화 기능별 명사 힌트 추가 고려
-#            (예: "음식 주문하기" → 음식 명사 우선 주입)
-
-# ----------------------------------------------------------------
-
-# [3] topic DB 설계 ← [2] 검증 후 시나리오 여전히 밋밋하면
-#
-# as-is (현재 구조):
-#   _ACTIVITIES dict — 장소별 활동 목록 (행위 수준 문자열)
-#   → 카테고리별 2개 샘플링 → step 0 "활동 풀"로 주입 (LLM이 step 0에서 확인, step 1에서 선택)
-#   → 편중 방지: _ACTIVITY_CAUTIONS 비활성화 중 (샘플링으로 대체)
-#   → location_vocab 미사용 (stub 상태) — To-do [3] 완료 후 복원 예정
-#   → Python dict 하드코딩 (한강·지하철·편의점 3개 장소)
-#
-# to-be (설계 방향 확정):
-#   _ACTIVITIES와 location_vocab의 역할 분리
-#     - _ACTIVITIES  → 일반 행위 수준 활동 ("화장실 찾기", "음식 주문하기" 등)
-#                      LLM이 장소 맥락 없이도 알 수 있는 것들
-#     - location_vocab → 장소 특화 고유명사 ("따릉이 대여소", "반포 무지개 분수" 등)
-#                        LLM이 스스로 떠올리기 어려운 것, 참고 어휘로 주입
-#   → LLM이 일반 활동을 선택한 뒤 location_vocab의 고유명사를 mission에 활용하는 구조
-#   → 장소별 고유명사가 _ACTIVITIES 풀을 늘리지 않으므로 쏠림 현상 방지
-#
-#   location_vocab 자료구조 설계 방향 (확정):
-#     - "topic" 아닌 "vocab"으로 명명 — 활동(할 것)이 아니라 알아야 할 고유 용어/시설명
-#     - 항목 구조: { "term": "따릉이", "description": "서울시 공공자전거 대여 서비스" }
-#     - 프롬프트 주입 레이블은 '장소 고유명사' 또는 '장소 시설명'으로 구분
-#       → 참고 어휘(일반 한국어 어휘)와 혼동 방지
-#
-#   추가 to-be:
-#   - 장소 확장: 현재 3개 장소 → 서비스 전체 장소 커버
-#   - 외부화: Python dict → JSON/DB 파일로 분리
-#   - topic : dialogue_function 힌트 추가 고려
-
-# ----------------------------------------------------------------
-
-# [4] mission 구조 카테고리 확장 ← 3급 이상 작업 시작할 때
-#
-# as-is: DIALOGUE_FUNCTIONS를 카테고리(요청자-조력자/각자 목표/자유 선택) 딕셔너리로 구조화
-#         → 1·2급 수동 분류 완료
-#         → 3급 이상 추가 시 동일하게 수동 분류 필요 (자동화 미완)
-#
-# to-be: 자동화 또는 분류 기준 재정의 (방법 미정)
+# [5] 데이터 외부화
+#   현재: _ACTIVITIES·_LOCATION_VOCAB·PERSONA_VOCAB 모두 Python dict 하드코딩
+#   to-do: JSON 파일로 분리 → 장소·급수 확장 시 코드 수정 없이 데이터만 추가 가능
