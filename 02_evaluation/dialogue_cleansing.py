@@ -7,6 +7,14 @@ import unicodedata
 from typing import Any
 
 PREDICATE_TAGS = {"VV", "VA", "VX", "XSV", "XSA"}
+
+# Kiwi가 존칭형으로 인해 올바른 원형을 복원하지 못하는 경우의 교정 테이블
+# 주의: 드세다(6_8773, 형용사 "고집이 드세다")는 실제 표제어이므로 교정 대상에서 제외
+# 드세요 -> 드세/VA(오분석) -> 드세다 는 교정 불가 (드세다가 실제 단어이므로 충돌)
+_LEMMA_CORRECTIONS: dict[str, str] = {
+    "드시다": "들다",  # 드셨어요/드십시오/드시나요 등 -> 들다04 (1_189)
+}
+
 MAIN_POS_TAGS = {"NNG", "NNP", "NNB", "NP", "NR", "VV", "VA", "MAG", "MAJ"}
 DISPLAY_POS_TAGS = MAIN_POS_TAGS | {"MAG", "MAJ"}
 TAG_KIND_HINTS = {
@@ -20,6 +28,24 @@ TAG_KIND_HINTS = {
     "VV": ["동사"],
     "VA": ["형용사"],
 }
+
+
+def base_pos_tag(tag: str) -> str:
+    """Kiwi 세부 태그 접미(예: VV-R)를 제거한 기본 품사를 반환한다."""
+
+    return str(tag).split("-", 1)[0]
+
+
+def is_main_pos_tag(tag: str) -> bool:
+    """어휘 평가 매칭 대상 품사인지 판별한다."""
+
+    return base_pos_tag(tag) in MAIN_POS_TAGS
+
+
+def is_display_pos_tag(tag: str) -> bool:
+    """표시용 정규화 토큰에 포함할 품사인지 판별한다."""
+
+    return base_pos_tag(tag) in DISPLAY_POS_TAGS
 
 
 def canonicalize_word(text: str) -> str:
@@ -49,12 +75,16 @@ def normalize_token_for_vocab(token: Any) -> str:
     """동사/형용사 계열은 사전형으로 정규화해 사전 매칭에 사용한다."""
 
     tag = getattr(token, "tag", "")
+    base_tag = base_pos_tag(tag)
     form = getattr(token, "form", "")
     lemma = getattr(token, "lemma", "")
 
-    if tag in PREDICATE_TAGS:
-        base = lemma or form
-        return base if base.endswith("다") else f"{base}다"
+    if base_tag in PREDICATE_TAGS:
+        # Kiwi lemma가 있으면 이를 사용하되, 오분석은 교정
+        if lemma:
+            raw = lemma if lemma.endswith("다") else f"{lemma}다"
+            return _LEMMA_CORRECTIONS.get(raw, raw)
+        return form
 
     return form
 
@@ -73,7 +103,7 @@ def build_normalized_tokens(tokens: list[Any]) -> list[str]:
 
     normalized_tokens: list[str] = []
     for token in tokens:
-        if token.tag in DISPLAY_POS_TAGS:
+        if is_display_pos_tag(token.tag):
             normalized_tokens.append(normalize_token_for_vocab(token))
     return normalized_tokens
 
@@ -94,7 +124,7 @@ def resolve_entry_by_pos(
         return vocab_entries[match_key][0]
 
     candidates = homonyms[match_key]
-    kind_hints = TAG_KIND_HINTS.get(token_tag, [])
+    kind_hints = TAG_KIND_HINTS.get(base_pos_tag(token_tag), [])
     filtered = [
         candidate
         for candidate in candidates

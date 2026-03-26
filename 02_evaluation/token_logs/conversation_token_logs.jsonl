@@ -1,0 +1,16 @@
+
+user_id: debug
+created_at: 2026-03-26T04:07:15.300131+00:00
+original_utterance_1: 선생님 진지 드셨어요?
+form	tag	lemma	normalized	matched	vocab_index	vocab_example	confidence
+선생	NNG	선생	선생	X			
+님	XSN	님	님	X			
+진지	NNG	진지	진지	O	5_7560	진지를 드시다	1.00
+드시	VV	드시다	들다	X			
+었	EP	었	었	X			
+어요	EF	어요	어요	X			
+
+low_confidence_tokens:
+form	tag	lemma	normalized	matched	vocab_index	confidence	utterance
+(low confidence token 없음)
+

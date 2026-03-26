@@ -20,4 +20,11 @@ class EvaluationState(BaseState, total=False):
     SCK_total_tokens: int
     SCK_match_rate: float
     SCK_level_counts: dict[str, int]
+    SCK_level_word_counts: dict[str, dict[str, int]]
     SCK_unresolved_homonyms: dict[str, int]
+    context_hit_location: float
+    context_hit_scenario: float
+    context_length_bonus: float
+    spelling_typo_total: int
+    spelling_user_turns: int
+    spelling_penalty_ratio: float
