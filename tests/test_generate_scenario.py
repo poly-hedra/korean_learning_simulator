@@ -29,6 +29,7 @@ _scenario_module = import_module("01_conversation.prompts.scenario")
 build_system_prompt = _scenario_module.build_system_prompt
 build_user_message = _scenario_module.build_user_message
 clean_dialogue_functions = _scenario_module.clean_dialogue_functions
+VERSION = _scenario_module.VERSION
 
 RESULTS_DIR = Path(__file__).parent / "results"
 
@@ -95,7 +96,7 @@ def main() -> None:
     RESULTS_DIR.mkdir(exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = RESULTS_DIR / f"scenario_{args.location}_{timestamp}.json"
+    filename = RESULTS_DIR / f"scenario_{args.location}_{VERSION}_{timestamp}.json"
 
     output = {
         "meta": {
