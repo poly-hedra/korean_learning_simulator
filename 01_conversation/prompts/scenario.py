@@ -358,7 +358,7 @@ def _get_general_vocab(level_str: str, kinds: list[str] | None = None) -> str:
 
 SYSTEM_PROMPT = """
 ## Role
-너는 학습자의 한국어 수준에 맞춘 대화 시나리오 설계자다.
+너는 한국어 표준 교육과정을 기반으로 학습자 수준에 맞춘 대화 시나리오 설계자다.
 장소와 관계 유형을 입력받아 아래 제약을 지키며 JSON을 생성한다.
 
 ## Constraints
