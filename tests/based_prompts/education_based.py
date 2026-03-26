@@ -62,6 +62,65 @@ _RELATIONSHIP_TYPES = ["친구", "선배-후배", "연인", "선생님-학생", 
 # → 매 호출마다 다른 관계 유형이 선택되어 시나리오 다양성을 확보한다.
 # build_user_message() 내부에서만 소비되므로 _ 접두사(모듈 내부 전용)를 사용.
 
+PERSONA_VOCAB: dict[str, list[str]] = {
+    "1급": [
+        "회사원", "의사", "가수", "영화배우",
+        "아주머니", "아저씨", "할머니", "할아버지",
+        "가게 주인", "식당 주인", "카페 주인", "서점 주인",
+        "편의점 주인", "편의점 직원", "백화점 직원",
+        "은행 직원", "호텔 직원", "병원 직원",
+    ],
+}
+# 관계 유형이 "낯선 사람"일 때 B 페르소나의 직업·신분 어휘로 사용.
+# 낯선 사람 외 관계에는 주입하지 않는다.
+# vocabulary.json에 직업명이 미포함되어 있으므로 별도 관리. (To-do [2] 참고)
+# 2급 어휘는 추후 추가 예정.
+#
+# [설계 방향] 장소 한정 역할(따릉이 대여소 직원, 한강 관리소 직원 등)은
+# 이 목록에 추가하지 않고 location_vocab 단에서 다룬다.
+# → 일반 직업(배달 기사, 회사원 등)만 여기서 관리.
+
+_ACTIVITIES: dict[str, list[str]] = {
+    "한강": [
+        # [구매/주문] → 음식 주문하기, 물건 사기
+        "편의점에서 간식 사기", "카페에서 음료 주문하기", "카페에서 디저트 주문하기",
+        "배달 음식 주문하기", "피크닉 용품 빌리기",
+        # [시설 이용/위치] → 장소 묻기
+        "가까운 화장실 찾기", "지하철역 가는 길 묻기", "편의점 찾기", "카페 찾기", "쓰레기통 찾기",
+        # [시간/계획] → 시간 묻기, 약속 정하기
+        "분수 쇼 시작 시간 확인하기", "친구와 만날 장소 정하기",
+        "수영장 운영 시간 묻기", "음식 메뉴 고르기",
+        # [경험/일상] → 경험 묻기, 취향 묻기, 기분 묻기, 일상 묻기, 자기소개
+        "오늘 기분이 어떤지 이야기하기", "좋아하는 노래 같이 듣기",
+        "러닝 크루에서 자기소개하기", "한강에 자주 오는지 묻기",
+        # [감상/휴식] → 날씨/풍경 묻기
+        "무지개 분수 구경하기", "노을 사진 찍기",
+        "돗자리 펴고 쉬기", "야경 감상하며 산책하기",
+    ],
+}
+# 장소별 활동 풀(_ACTIVITIES) — LLM이 적합한 활동을 고르게 선택하도록 돕는 참고 목록.
+#
+# [역할]
+#   LLM이 장소에서 가능한 활동을 충분히 알지 못하거나 task 중심 활동에 편중될 수 있으므로
+#   활동 풀을 명시적으로 제공한다.
+#   - [구매/주문], [시설 이용/위치]: 장소 특화 정보 — 없으면 LLM이 스스로 떠올리기 어려움
+#   - [경험/일상], [감상/휴식]: 균형추 — 소프트한 대화 기능(기분·취향 묻기 등) 선택 확률 확보
+#
+# [활동명 수준]
+#   행위 수준으로 작성 ("편의점에서 간식 사기") — 구체적 물품은 포함하지 않는다.
+#   어휘 다양성은 프롬프트 하단 ## 참고 어휘 섹션이 담당한다.
+#
+# [주입 방식]
+#   build_user_message() 호출 시 전체 목록을 {activities}에 주입.
+#   장소별 편중이 확인되면 _ACTIVITY_CAUTIONS에 Caution 문구를 추가해 프롬프트 레벨에서 제어.
+
+
+_ACTIVITY_CAUTIONS: dict[str, str] = {
+    "한강": "자전거 관련 활동에 편중되지 말 것.",
+}
+# 장소별로 LLM이 특정 활동에 과도하게 편중되는 경우 여기에 추가한다.
+# 해당 장소의 주의 문구가 없으면 빈 문자열이 주입된다.
+
 
 # ================================================================
 # 프롬프트
@@ -131,7 +190,12 @@ SYSTEM_PROMPT = """
       낯선 사람          → "{location}에서 처음 만난 두 사람의 대화입니다."
   - Constraint: 첫 문장에 {location}이 자연스럽게 포함될 것
 
-### ⑤ dialogue_function
+### ⑤ expression
+  - 어휘와 문법은 유저 프롬프트에서 주어진 학습자 수준에 맞게 작성
+  - 단, 장소명·시설명·고유명사(따릉이, 반포 무지개 분수 등)는 수준과 무관하게 자유롭게 사용 가능
+  - 유저 프롬프트의 ## 참고 어휘를 mission·scenario_description 작성 시 적극 반영
+
+### ⑥ dialogue_function
   - 배열 각 항목은 기능명만 포함할 것
   - 카테고리 태그([요청자-조력자] 등)나 카테고리명 자체를 항목 값으로 쓰는 것은 금지
   - Example) ["장소 묻기", "취향 묻기"]
@@ -156,7 +220,7 @@ Field descriptions:
   scenario_title      — 시나리오를 한 문장으로 요약한 제목
   scenario_description — 학습자가 대화 맥락을 이해할 수 있는 1~2문장 상황 안내 (## Constraints ④)
   location            — 입력받은 장소값 그대로
-  dialogue_function   — 선택한 대화 기능 목록 (문자열 배열, ## Constraints ⑤)
+  dialogue_function   — 선택한 대화 기능 목록 (문자열 배열, ## Constraints ⑥)
   relationship_type   — 입력받은 관계 유형값 그대로
   personas.A/B
     name    — 인물 이름
@@ -174,18 +238,12 @@ _USER_PROMPT_TEMPLATE = """
 ## 실행 순서
 0. [입력 확인] {relationship_type} — 주어진 값 그대로 사용
 
-1. [활동 선택] {location}에서 할 수 있는 활동들을 다양하게 떠올린 뒤, {relationship_type}과 가장 자연스러운 것 선택
+1. [활동 선택] {relationship_type}과 가장 자연스러운 활동 선택
    낯선 사람 → 반드시 1개만 선택 | 나머지 → 1~2개 선택
+   {activity_caution}Note) 아래 목록 전체를 고르게 참고할 것.
+     {activities}
 
-   참고) {location}에서 할 수 있는 활동들
-     한강 → 데이트, 어학당 소풍, 견학, 산책, 달리기, 사진 찍기, 음악 듣기, 배 타기, 라면 먹기, 꽃 구경, 책 읽기,
-            농구, 축구, 따릉이(자전거) 타기, 강아지 산책, 노래 부르기, 여행 이야기하기, 주말 이야기하기, 배달 음식 먹기,
-            한강 편의점에서 간식 사기, 자전거 대여소 이용하기, 한강 매점에서 음식 주문하기, 반포 무지개 분수 쇼 보기
-     지하철 → 출구 위치 묻기, 환승 노선 묻기, 내리는 역 묻기, 가게에서 간식 먹기, 가게에서 옷 사기,
-              비켜 달라고 하기, 음악 소리 줄여 달라고 하기, 모르는 어른의 질문에 답하기
-     편의점 → 1+1 행사 확인하기, 간식 추천받기, 나이 확인하기, 계산하기, 야식 고르기, 길 묻기
-
-2. [dialogue_function 확정] 선택한 활동에 맞는 dialogue_function을 확정
+2. [dialogue_function 확정] 선택한 활동에 가장 자연스럽게 연결되는 dialogue_function을 아래 목록에서 확정
 
    {dialogue_functions}
 
@@ -221,10 +279,7 @@ _USER_PROMPT_TEMPLATE = """
 }}
 
 ## 참고 어휘
-인물 (낯선 사람 B 전용): 회사원, 의사, 가수, 영화배우, 아주머니, 아저씨, 할머니, 할아버지,
-      가게 주인, 식당 주인, 카페 주인, 서점 주인, 편의점 주인, 편의점 직원, 백화점 직원,
-      은행 직원, 호텔 직원, 병원 직원
-음식: 김밥, 라면, 떡볶이, 치킨, 딸기, 귤, 사과, 바나나, 빵, 아이스크림
+{persona_vocab}음식: 김밥, 라면, 떡볶이, 치킨, 딸기, 귤, 사과, 바나나, 빵, 아이스크림
 동사: 가다, 오다, 알다, 모르다, 찾다, 묻다, 사다, 먹다, 마시다, 만나다, 기다리다, 좋아하다, 싫어하다, 지내다, 다니다
 형용사: 좋다, 가깝다, 멀다, 많다, 싸다, 비싸다, 맛있다, 바쁘다, 괜찮다
 """
@@ -267,6 +322,22 @@ def clean_dialogue_functions(items: list[str]) -> list[str]:
     """
     return [re.sub(r"^\[.*?\]\s*", "", item).strip() for item in items]
 
+def _get_activities(location: str) -> tuple[str, str]:
+    """_ACTIVITIES에서 location에 해당하는 전체 활동 목록을 반환한다.
+
+    Returns:
+        activities_str   — 프롬프트용 활동 목록 문자열 ({activities} 자리에 주입)
+        activity_caution — 장소별 편중 주의 문구 ({activity_caution} 자리에 주입, 없으면 "")
+
+    location이 _ACTIVITIES에 없으면 빈 문자열을 반환한다.
+    """
+    pool = _ACTIVITIES.get(location)
+    if not pool:
+        return "(활동 목록 없음 — 장소에 맞게 자유롭게 선택하세요.)", ""
+    activities_str = ", ".join(pool)
+    activity_caution = _ACTIVITY_CAUTIONS.get(location, "")
+    return activities_str, activity_caution
+
 
 def build_system_prompt() -> str:
     return SYSTEM_PROMPT
@@ -282,11 +353,21 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
         f"[{category}] {' | '.join(items)}"
         for category, items in funcs.items()
     )
+    activities, activity_caution = _get_activities(location)
+    caution_str = f"Caution) {activity_caution}\n   " if activity_caution else ""
+    if relationship_type == "낯선 사람":
+        vocab_list = PERSONA_VOCAB.get(level_str, PERSONA_VOCAB["1급"])
+        persona_vocab = "인물 (낯선 사람 B 전용): " + ", ".join(vocab_list) + "\n"
+    else:
+        persona_vocab = ""
     return _USER_PROMPT_TEMPLATE.format(
         level=level_str,
         location=location,
         relationship_type=relationship_type,
         dialogue_functions=dialogue_functions,
+        activities=activities,
+        activity_caution=caution_str,
+        persona_vocab=persona_vocab,
     )
 
 
@@ -299,7 +380,8 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 # - 학습자 수준: LEVEL_MAP으로 변환 → {level} 주입
 # - 대화 기능 목록: DIALOGUE_FUNCTIONS[급수] 카테고리별 포맷팅 → {dialogue_functions} 주입
 # - 장소 활동 목록: 하드코딩 (유저 프롬프트 참고 블록) → [3] 완료 후 동적 주입 예정
-# - 참고 어휘: 하드코딩 (유저 프롬프트 하단) → [2] 완료 후 동적 주입 예정
+# - 인물 어휘: PERSONA_VOCAB[급수] → "낯선 사람"일 때만 {persona_vocab} 주입
+# - 참고 어휘(음식·동사·형용사): 하드코딩 → [2] 완료 후 동적 주입 예정
 
 # [LLM이 처리]
 # 0. relationship_type 확인 (주어진 값 그대로)
@@ -313,32 +395,6 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 # ================================================================
 # To-do 및 To-be
 # ================================================================
-# [1] CoT 고도화 이후 수정해야 할 사항들 정리
-# ① 활동 참고 목록의 '과거/미래 지향적' 항목
-# 원인: _USER_PROMPT_TEMPLATE의 2번 단계(참고 어휘)를 보면, 한강 활동 예시로 **"여행 이야기하기", "주말 이야기하기"**가 포함되어 있습니다.
-# 결과: 모델은 이 가이드를 보고 "한강에 있더라도 여행이나 주말 이야기를 하는 것이 자연스러운 활동"이라고 판단합니다. 실제로 EB 41번 케이스에서 "나탈리의 주말 계획에 대해 궁금해함"과 같은 현장 이탈 시나리오가 생성된 근거가 됩니다. [User Summary, 22]
-# ② [각자 목표] 카테고리의 미션 제약
-# 원인: SYSTEM_PROMPT의 ③번 제약 조건에 **"mission은 반드시 '상대방에 대해 알고 싶은 것'으로 작성할 것"**이라는 강한 규칙이 있습니다.
-# 결과: 이 규칙 때문에 모델은 눈앞의 한강 풍경이나 시설물을 활용하기보다, 상대방의 개인적인 정보(취향, 경험, 주말 일과)를 묻는 데 집중하게 됩니다. EB 10번 케이스에서 "지민이의 주말 일과를 알고 싶어합니다"라는 대화가 나온 이유입니다. [User Summary, 20]
-# ③ 대화 기능 자체의 시점 문제
-# 원인: 1급 DIALOGUE_FUNCTIONS 중 [각자 목표] 항목에 **"어제/주말에 한 일 묻기"**가 명시되어 있습니다.
-# 결과: 이 기능이 선택되는 순간, 모델은 문법적으로 '과거 시제'를 사용해야 하므로 필연적으로 현재 한강 현장을 이탈하여 과거의 장소를 대화 소재로 삼게 됩니다. [User Summary, 16]
-
-# --------------------------------------------------------------------------------
-# 2. 대화 기능을 유지하며 '현장성'을 높이는 개정 제안
-# 사용자님의 의도대로 기능을 빼지 않고, 프롬프트의 '제약 조건'과 '활동 예시'만 정교화하여 현장성을 강제하는 방법입니다.
-# 교정안 1: 활동 목록의 '현장 중심화' (User Prompt 수정)
-# 수정 전: "여행 이야기하기, 주말 이야기하기"
-# 수정 후: "(지금 한강에서) 여행 이야기하기, (다음 주말에 한강에 또 올지) 주말 이야기하기"
-# 효과: 모든 활동의 전제 조건을 '현재 한강'으로 묶어줍니다.
-# 교정안 2: [각자 목표]의 대상 확장 (System Prompt 수정)
-# 수정 전: "mission은 반드시 '상대방에 대해 알고 싶은 것'으로 작성할 것"
-# 수정 후: "mission은 **'현재 장소(location)에서 상대방과 함께하고 있는 활동'**이나 **'현재 상황에 대한 상대방의 생각'**을 알고 싶은 것으로 작성할 것"
-# 효과: "어제 뭐 했어?" 대신 "지금 한강 바람 어때?"나 "여기서 라면 먹는 거 좋아해?"와 같은 현장 밀착형 질문을 유도합니다. [User Summary]
-# 교정안 3: 상황 안내(scenario_description)의 시점 강제
-# 수정 전: "[A.name]은/는 ~하고 싶고..."
-# 수정 후: "지금 [location]에 있는 [A.name]은/는 눈앞의 상황에서 ~하고 싶고..."
-# 효과: 시나리오의 시작점 자체를 '지금, 여기'로 고정하여 할루시네이션(현장 이탈)을 방지합니다.
 #
 # [2] vocabulary 동적 주입 ← [1] 완료 후
 #
@@ -381,21 +437,31 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 
 # [3] topic DB 설계 ← [2] 검증 후 시나리오 여전히 밋밋하면
 #
-# as-is: 장소 활동 목록 프롬프트에 하드코딩
-#         → 반복적이고 생동감 부족하다는 피드백
-#         → node 방식(location_context 동적 생성)으로 보완 시도했으나
-#            "장소 묻기" 편중 + 속도 비용(+2.43s) 문제 발생
+# as-is (현재 구조):
+#   _ACTIVITIES dict — 장소별 활동 목록 (행위 수준 문자열, 전체 주입)
+#   → 편중 방지: _ACTIVITY_CAUTIONS로 프롬프트 레벨 제어
+#   → location_vocab 미사용 (stub 상태) — To-do [3] 완료 후 복원 예정
+#   → Python dict 하드코딩 (한강·지하철·편의점 3개 장소)
 #
-# to-be:
-#   - 장소 활동 목록을 topic DB로 재편
-#     (예: "따릉이 빌리기", "한강 매점에서 라면 주문하기")
-#   - topic_description 필드 추가
-#     → 외국인 학습자에게 낯선 고유명사 설명
-#     → 예: "따릉이는 서울시 공공 자전거예요."
-#     → 자명한 장소(카페, 편의점)는 null
-#   - topic : dialogue_function 매핑은 LLM에게 위임
-#     → topic이 정해지면 LLM이 자연스러운 대화 기능 판단
-#   - node 방식 폐기 → 그래프 구조 단순화
+# to-be (설계 방향 확정):
+#   _ACTIVITIES와 location_vocab의 역할 분리
+#     - _ACTIVITIES  → 일반 행위 수준 활동 ("화장실 찾기", "음식 주문하기" 등)
+#                      LLM이 장소 맥락 없이도 알 수 있는 것들
+#     - location_vocab → 장소 특화 고유명사 ("따릉이 대여소", "반포 무지개 분수" 등)
+#                        LLM이 스스로 떠올리기 어려운 것, 참고 어휘로 주입
+#   → LLM이 일반 활동을 선택한 뒤 location_vocab의 고유명사를 mission에 활용하는 구조
+#   → 장소별 고유명사가 _ACTIVITIES 풀을 늘리지 않으므로 쏠림 현상 방지
+#
+#   location_vocab 자료구조 설계 방향 (확정):
+#     - "topic" 아닌 "vocab"으로 명명 — 활동(할 것)이 아니라 알아야 할 고유 용어/시설명
+#     - 항목 구조: { "term": "따릉이", "description": "서울시 공공자전거 대여 서비스" }
+#     - 프롬프트 주입 레이블은 '장소 고유명사' 또는 '장소 시설명'으로 구분
+#       → 참고 어휘(일반 한국어 어휘)와 혼동 방지
+#
+#   추가 to-be:
+#   - 장소 확장: 현재 3개 장소 → 서비스 전체 장소 커버
+#   - 외부화: Python dict → JSON/DB 파일로 분리
+#   - topic : dialogue_function 힌트 추가 고려
 
 # ----------------------------------------------------------------
 
