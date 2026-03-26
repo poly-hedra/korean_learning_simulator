@@ -628,10 +628,9 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 # To-do
 # ================================================================
 #
-# [1] general_vocab 명사 포함 여부 검토
-#   현재: 동사·형용사만 주입 (1급 기준 255개)
-#   검토: 명사 추가 시 어휘 수 대폭 증가 → LLM이 더 구체적인 mission을 작성할 수 있으나
-#         프롬프트 길이 증가. 실제 출력 품질 보고 결정.
+# [0] _LOCATION_VOCAB에 해당하는 어휘에 대한 topic_description 추가
+#   현재: 시설명,역할만 존재 
+#   to-do: 각 어휘에 대해 사용자가 이해할 수 있도록 간략한 정보 추가 
 #
 # [2] 장소 확장
 #   현재: _ACTIVITIES·_LOCATION_VOCAB 모두 한강만 존재
@@ -648,3 +647,5 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 # [5] 데이터 외부화
 #   현재: _ACTIVITIES·_LOCATION_VOCAB·PERSONA_VOCAB 모두 Python dict 하드코딩
 #   to-do: JSON 파일로 분리 → 장소·급수 확장 시 코드 수정 없이 데이터만 추가 가능
+#
+# [6] 사용자 학습 누적, 평가 이후 시나리오 생성 어떻게 할지 구조 논의 필요

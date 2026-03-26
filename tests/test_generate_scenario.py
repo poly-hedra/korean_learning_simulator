@@ -74,7 +74,11 @@ def run_once(location: str, level: str) -> dict:
     result["scenario_raw"] = raw
 
     try:
-        start, end = raw.find("{"), raw.rfind("}")
+        end = raw.rfind("}")
+        # LLM이 JSON을 두 번 출력하는 경우(오류 인지 후 재출력 등) 마지막 블록을 사용한다.
+        # top-level {는 줄 앞에 바로 위치하므로 rfind("\n{")로 마지막 블록 시작점을 찾는다.
+        last_start = raw.rfind("\n{")
+        start = (last_start + 1) if last_start != -1 else raw.find("{")
         parsed = json.loads(raw[start : end + 1])
         if isinstance(parsed, dict) and "dialogue_function" in parsed:
             # LLM이 "[각자 목표] 취향 묻기" 같이 카테고리 태그를 값에 포함하거나
@@ -105,7 +109,11 @@ def run_once_education_based(location: str, level: str) -> dict:
     result["scenario_raw"] = raw
 
     try:
-        start, end = raw.find("{"), raw.rfind("}")
+        end = raw.rfind("}")
+        # LLM이 JSON을 두 번 출력하는 경우(오류 인지 후 재출력 등) 마지막 블록을 사용한다.
+        # top-level {는 줄 앞에 바로 위치하므로 rfind("\n{")로 마지막 블록 시작점을 찾는다.
+        last_start = raw.rfind("\n{")
+        start = (last_start + 1) if last_start != -1 else raw.find("{")
         parsed = json.loads(raw[start : end + 1])
         if isinstance(parsed, dict) and "dialogue_function" in parsed:
             # node 방식과 동일한 이유로 후처리 적용.
