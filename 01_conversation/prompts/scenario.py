@@ -722,7 +722,7 @@ def build_user_message(
 #
 # [0] _LOCATION_VOCAB에 해당하는 어휘에 대한 topic_description 추가
 #   현재: 시설명, 역할만 존재
-#   to-do: 각 어휘에 대해 사용자가 이해할 수 있도록 간략한 정보 추가
+#   to-do: 각 어휘에 대해 사용자가 이해할 수 있도록 간략한 정보 추가(튜플로 묶어볼 생각)
 #
 # [2] 장소 확장
 #   현재: _ACTIVITIES·_LOCATION_VOCAB 모두 한강만 존재
