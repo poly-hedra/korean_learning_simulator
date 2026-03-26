@@ -23,9 +23,6 @@ LEVEL_MAP: dict[str, str] = {
 # 한국어 표준 과정(1~2급: Beginner / 3~4급: Intermediate / 5~6급: Advanced) 기준으로
 # 각 구간의 시작 급수(1·3·5급)를 대표값으로 사용해 가장 쉬운 레벨부터 시작하도록 설계.
 
-level_kr = LEVEL_MAP[level]  # e.g. "1급"
-# 한국어 표준 교육과정 급수 변환해 sytem prompt에 주입하기 위한 값.
-
 # build_user_message() 호출 시 level 인자("Beginner" 등)를 이 딕셔너리로 변환한다.
 # 변환된 값(예: "1급")이 _USER_PROMPT_TEMPLATE의 {level} 자리에 주입된다.
 # LLM은 항상 "1급 / 3급 / 5급" 형태로 학습자 수준을 받는다.
@@ -595,8 +592,12 @@ def _get_persona_vocab(level_str: str, location: str) -> list[str]:
     return general + location_roles
 
 
-def build_system_prompt() -> str:
-    return SYSTEM_PROMPT
+def build_system_prompt(level: str = "Beginner") -> str:
+    # LEVEL_MAP으로 "Beginner" → "1급" 변환.
+    # SYSTEM_PROMPT 안의 {level_kr} 자리에 .format()으로 주입된다.
+    # (SYSTEM_PROMPT는 일반 문자열이므로 .format() 호출 전까지 {level_kr}은 텍스트 그대로 남아 있음)
+    level_kr = LEVEL_MAP.get(level, "1급")
+    return SYSTEM_PROMPT.format(level_kr=level_kr)
 
 
 def build_user_message(
@@ -641,6 +642,8 @@ def build_user_message(
         else ""
     )
     general_vocab = _get_general_vocab(level_str)
+    # _USER_PROMPT_TEMPLATE 안의 {level}, {location}, {relationship_type} 등
+    # 모든 {} 자리에 .format()으로 한꺼번에 값을 주입해 완성된 유저 프롬프트를 반환한다.
     return _USER_PROMPT_TEMPLATE.format(
         level=level_str,
         location=location,
