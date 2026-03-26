@@ -29,7 +29,11 @@ LEVEL_MAP: dict[str, str] = {
 
 DIALOGUE_FUNCTIONS: dict[str, dict[str, list[str]]] = {
     "1급": {
-        "요청자-조력자": ["장소 묻기", "물건 사기", "음식 주문하기", "시간 묻기"],
+        "요청자-조력자": ["장소 묻기",
+                     "물건 사기", 
+                     "음식 주문하기", 
+                     "시간 묻기"
+        ],
         "각자 목표": [
             "일상 묻기",
             "취향 묻기",
@@ -74,6 +78,9 @@ DIALOGUE_FUNCTIONS: dict[str, dict[str, list[str]]] = {
 # build_user_message() 호출 시 급수를 키로 카테고리별 목록을 포맷팅해 주입한다.
 # → {dialogue_functions} 자리에 "[카테고리] 기능1 | 기능2 | ..." 형태로 렌더링된다.
 # → LLM이 [] 태그를 보고 mission 구조를 직접 판단하므로 시스템 프롬프트에서 목록 중복 불필요.
+#
+# TODO: "3급"(Intermediate), "5급"(Advanced) 데이터 추가 필요.
+#       현재 미정의 급수는 "1급" 데이터로 폴백됨 — build_user_message() 참고.
 
 _RELATIONSHIP_TYPES = ["친구", "선배-후배", "연인", "선생님-학생", "낯선 사람"]
 # MVP 대표 페르소나(20대 유학생)가 친밀도·위계에 따른
@@ -112,7 +119,7 @@ PERSONA_VOCAB: dict[str, list[str]] = {
 # vocabulary.json에 직업명이 미포함되어 있으므로 별도 관리.
 # 2급 어휘는 추후 추가 예정.
 #
-# [설계 방향] 장소 한정 역할(따릉이 대여소 직원, 한강 관리소 직원 등)은
+# [설계 방향] 장소 한정 역할(자전거 대여소 직원, 한강 관리소 직원 등)은
 # 이 목록에 추가하지 않고 location_vocab 단에서 다룬다.
 # → 일반 직업(배달 기사, 회사원 등)만 여기서 관리.
 
@@ -205,8 +212,8 @@ _LOCATION_VOCAB: dict[str, dict[str, list[str]]] = {
     "한강": {
         "시설명": [
             "반포 무지개 분수",
-            "따릉이 대여소",
-            "오리배 선착장",
+            "자전거 대여소",
+            "오리배 대여소"
             "한강 유람선",
             "한강 수영장",
             "바비큐 구역",
@@ -220,13 +227,13 @@ _LOCATION_VOCAB: dict[str, dict[str, list[str]]] = {
             "여의도 공원",
         ],
         "역할": [
-            "따릉이 대여소 직원",
-            "오리배 선착장 직원",
+            "자전거 대여소 직원",
+            "오리배 대여소 직원",
             "유람선 안내원",
             "피크닉 용품 대여소 직원",
             "한강공원 안내소 직원",
             "수영장 안내원",
-            "푸드트럭 사장님",
+            "푸드트럭 사장",
         ],
     },
 }
@@ -243,8 +250,8 @@ _LOCATION_VOCAB: dict[str, dict[str, list[str]]] = {
 #
 # [주입 방식]
 #   build_user_message()에서 카테고리별로 레이블을 붙여 참고 어휘 섹션에 주입.
-#   예) "장소 시설명: 반포 무지개 분수, 따릉이 대여소, ..."
-#       "장소 한정 역할: 따릉이 대여소 직원, 오리배 선착장 직원, ..."
+#   예) "장소 시설명: 반포 무지개 분수,  ..."
+#       "장소 한정 역할: 자전거 대여소 직원, 오리배 대여소 직원, ..."
 #
 # [역할 분리 기준]
 #   _ACTIVITIES               → 일반 + 장소 특화 활동을 섞은 가드레일 (행위 수준, 샘플링 주입)
@@ -359,7 +366,6 @@ def _get_general_vocab(level_str: str, kinds: list[str] | None = None) -> str:
 SYSTEM_PROMPT = """
 ## Role
 너는 한국 일상 대화 시나리오 설계자다.
-학습자 레벨은 한국어 표준 교육과정 {level_kr} 수준이다.
 장소와 관계 유형을 입력받아 아래 제약을 지키며 JSON을 생성한다.
 
 ## Constraints
@@ -446,7 +452,7 @@ Field descriptions:
 """
 
 _USER_PROMPT_TEMPLATE = """
-학습자 수준: {level}
+학습자 수준: 한국어 표준 교육과정 {level}
 장소: {location}
 관계 유형: {relationship_type}
 
@@ -501,23 +507,10 @@ _USER_PROMPT_TEMPLATE = """
 
 
 # ----------------------------------------------------------------
-# [왜 이 함수가 필요한가?]
-#
-# build_user_message()는 LLM에게 대화 기능 목록을 다음 형태로 주입한다:
-#   "[요청자-조력자] 장소 묻기 | 물건 사기 | ..."
-#   "[각자 목표] 취향 묻기 | 경험 묻기 | ..."
-#
-# [] 태그는 LLM이 mission 구조(요청자-조력자인지, 각자 목표인지)를 판단하기 위한
-# '힌트'로 설계된 것이고, 최종 JSON 출력의 dialogue_function 배열에는
-# 기능명만("취향 묻기") 담겨야 한다.
-#
-# 그런데 LLM이 이 태그를 그대로 출력에 포함시키는 오류가 발생한다:
-#   실패 유형 1: ["[각자 목표] 취향 묻기"]  ← 태그가 값 앞에 붙어 나옴
-#   실패 유형 2: ["각자 목표"]              ← 기능명 대신 카테고리명 자체가 들어옴
-#
-# 시스템 프롬프트에 ⑤ 제약을 추가해 1차 방어를 하지만,
-# LLM은 확률적으로 제약을 어기는 경우가 있으므로
-# 이 함수로 2차(후처리) 방어를 한다.
+# dialogue_function JSON 출력에서 카테고리 태그를 제거하는 클렌징 함수.
+# LLM이 태그를 잘못 포함시키는 두 가지 실패 패턴을 후처리로 방어한다.
+#   실패 유형 1: ["[각자 목표] 취향 묻기"]  → "취향 묻기"
+#   실패 유형 2: ["각자 목표"]              → "" (호출부에서 if f 로 필터 필요)
 #
 # [정규식 설명]
 #   r"^\[.*?\]\s*"
@@ -568,7 +561,7 @@ def _get_persona_vocab(level_str: str, location: str) -> list[str]:
     Returns:
         일반 직업(PERSONA_VOCAB) + 장소 한정 직함(_LOCATION_VOCAB["역할"])이
         합산된 단일 리스트.
-        예) ["회사원", "의사", ..., "따릉이 대여소 직원", "오리배 선착장 직원", ...]
+        예) ["회사원", "의사", ..., "자전거 대여소 직원", "오리배 선착장 직원", ...]
 
     [왜 이 함수가 필요한가?]
         기존에는 build_user_message()가 PERSONA_VOCAB만 직접 참조했다.
@@ -592,14 +585,8 @@ def _get_persona_vocab(level_str: str, location: str) -> list[str]:
     return general + location_roles
 
 
-def build_system_prompt(level: str = "Beginner") -> str:
-    # LEVEL_MAP으로 "Beginner" → "1급" 변환.
-    # SYSTEM_PROMPT 안의 {level_kr} 자리에 .format()으로 주입된다.
-    # (SYSTEM_PROMPT는 일반 문자열이므로 .format() 호출 전까지 {level_kr}은 텍스트 그대로 남아 있음)
-    level_kr = LEVEL_MAP.get(level, "1급")
-    # .format() 대신 .replace() 사용 — SYSTEM_PROMPT 안에 {dialogue_functions}, {location} 등
-    # 예시용 {} 텍스트가 섞여 있어 .format()을 쓰면 KeyError가 발생하기 때문.
-    return SYSTEM_PROMPT.replace("{level_kr}", level_kr)
+def build_system_prompt() -> str:
+    return SYSTEM_PROMPT
 
 
 def build_user_message(
@@ -614,6 +601,7 @@ def build_user_message(
         else random.choice(_RELATIONSHIP_TYPES)
     )
     funcs = DIALOGUE_FUNCTIONS.get(level_str, DIALOGUE_FUNCTIONS["1급"])
+    # TODO: "3급"·"5급" 데이터 추가 후 폴백 제거 — DIALOGUE_FUNCTIONS 주석 참고.
     # DIALOGUE_FUNCTIONS[level_str]의 카테고리별 항목을
     # "[카테고리] 기능1 | 기능2 | ..." 형태로 조합해 {dialogue_functions}에 주입
     dialogue_functions = "\n   ".join(
@@ -710,7 +698,7 @@ def build_user_message(
 #
 # [코드가 처리]
 # - 관계 유형: random.choice → {relationship_type} 주입
-# - 학습자 수준: LEVEL_MAP으로 변환 → {level} 주입
+# - 학습자 수준: LEVEL_MAP으로 변환 → "한국어 표준 교육과정 {level}" 형태로 주입
 # - 대화 기능 목록: DIALOGUE_FUNCTIONS[급수] 카테고리별 포맷팅 → {dialogue_functions} 주입
 # - 장소 활동 목록: _ACTIVITIES[location] 카테고리별 2개 샘플링 → {activities} 주입
 # - 인물 어휘: _get_persona_vocab(level, location) — 일반 직업 + 장소 역할 합산
@@ -733,7 +721,7 @@ def build_user_message(
 # ================================================================
 #
 # [0] _LOCATION_VOCAB에 해당하는 어휘에 대한 topic_description 추가
-#   현재: 시설명,역할만 존재
+#   현재: 시설명, 역할만 존재
 #   to-do: 각 어휘에 대해 사용자가 이해할 수 있도록 간략한 정보 추가
 #
 # [2] 장소 확장
@@ -745,7 +733,7 @@ def build_user_message(
 #   to-do: 2급 이상 급수별 직업·신분 어휘 큐레이션 추가
 #
 # [4] DIALOGUE_FUNCTIONS 3급 이상 확장
-#   현재: 1·2급 수동 분류 완료
+#   현재: 1·2급 수동 분류 완료 (3급·5급 폴백 TODO 주석 추가됨)
 #   to-do: 3급 이상 추가 시 동일하게 카테고리(요청자-조력자/각자 목표/자유 선택) 수동 분류 필요
 #
 # [5] 데이터 외부화
