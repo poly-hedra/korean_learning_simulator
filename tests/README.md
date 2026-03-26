@@ -18,16 +18,18 @@ tests/
 ## 실행 방법
 
 > 반드시 **프로젝트 루트(`korean_learning_simulator/`)** 에서 실행
+>
+> `python tests/test_xxx.py` 방식으로 실행하면 상위 패키지를 못 찾으므로 반드시 `-m` 플래그를 사용한다.
 
 ```bash
 # 기본 실행 (한강, 1회)
-python tests/test_generate_scenario.py
+python -m tests.test_generate_scenario
 
 # 장소·횟수 지정
-python tests/test_generate_scenario.py --location 명동 --runs 3
+python -m tests.test_generate_scenario --location 명동 --runs 3
 
 # 수준 지정
-python tests/test_generate_scenario.py --location 편의점 --level Intermediate --runs 5
+python -m tests.test_generate_scenario --location 편의점 --level Intermediate --runs 5
 ```
 
 실행 후 `tests/results/` 에 JSON 파일이 생성된다.
@@ -48,10 +50,10 @@ python tests/test_generate_scenario.py --location 편의점 --level Intermediate
 
 ```bash
 # 최신 결과 파일 자동 선택
-python tests/parse_scenario_results.py
+python -m tests.parse_scenario_results
 
 # 파일 직접 지정
-python tests/parse_scenario_results.py --file tests/results/scenario_한강_20260324_183255.json
+python -m tests.parse_scenario_results --file tests/results/scenario_한강_20260326_202632.json
 ```
 
 CSV는 JSON과 같은 경로에 저장된다. `utf-8-sig` 인코딩이라 구글 시트/엑셀에서 한글이 깨지지 않는다.
