@@ -12,18 +12,16 @@
 # sys.path에 추가하기 때문에 상위 패키지(services 등)를 찾지 못한다.
 # 아래 코드는 프로젝트 루트(korean_learning_simulator/)를 sys.path에 강제 추가한다.
 import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-
 import argparse
 import json
 import time
-from datetime import datetime
 from pathlib import Path
-
+from datetime import datetime
 from services.llm_service import llm_service
 from importlib import import_module
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 _scenario_module = import_module("01_conversation.prompts.scenario")
 build_system_prompt = _scenario_module.build_system_prompt
@@ -59,7 +57,9 @@ def run_once(location: str, level: str) -> dict:
             # LLM이 "[각자 목표] 취향 묻기" 같이 카테고리 태그를 값에 포함하거나
             # "각자 목표" 처럼 카테고리명 자체를 출력하는 오류를 후처리로 정리한다.
             # cleaned가 빈 리스트면 원본을 그대로 유지한다(테스트 결과 보존 우선).
-            cleaned = [f for f in clean_dialogue_functions(parsed["dialogue_function"]) if f]
+            cleaned = [
+                f for f in clean_dialogue_functions(parsed["dialogue_function"]) if f
+            ]
             if cleaned:
                 parsed["dialogue_function"] = cleaned
         result["scenario_parsed"] = parsed
@@ -112,7 +112,7 @@ def main() -> None:
     for i in range(args.runs):
         print(f"\n{'='*60}")
         print(f"Run {i+1}/{args.runs} | 장소: {args.location} | 수준: {args.level}")
-        print("="*60)
+        print("=" * 60)
 
         result = run_once(location=args.location, level=args.level)
         result["run"] = i + 1

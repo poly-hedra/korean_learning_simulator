@@ -52,7 +52,3 @@ services:
 
     # 컨테이너 재시작 정책 : 비정상 종료 시 자동 재시작
     restart: unless-stopped
-
-
-
-

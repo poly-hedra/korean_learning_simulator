@@ -18,9 +18,9 @@ name: Korean Learning Simulator CI
 
 on:
   push:
-    branches: [main]
+    branches: [dev]
   pull_request:
-    branches: [main]
+    branches: [dev]
   workflow_dispatch:
 
 concurrency:
@@ -72,6 +72,7 @@ jobs:
 
       - name: Run tests
         env:
+          UPSTAGE_BASE_URL: ${{ secrets.UPSTAGE_BASE_URL }}
           UPSTAGE_API_KEY: ${{ secrets.UPSTAGE_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}

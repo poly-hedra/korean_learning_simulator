@@ -21,12 +21,12 @@ _LOCATION_NOTES = {
     "지하철": "- 환승 노선·출구 정보는 실제 사실만 포함할 것",
 }
 
+
 def build_location_context_prompt(location: str) -> str:
     note = _LOCATION_NOTES.get(location, "")
     note_str = f"\n{note}" if note else ""
     return LOCATION_CONTEXT_PROMPT.format(
-        location=location,
-        location_specific_note=note_str
+        location=location, location_specific_note=note_str
     )
 
 
