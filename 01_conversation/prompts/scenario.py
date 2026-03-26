@@ -23,6 +23,9 @@ LEVEL_MAP: dict[str, str] = {
 # 한국어 표준 과정(1~2급: Beginner / 3~4급: Intermediate / 5~6급: Advanced) 기준으로
 # 각 구간의 시작 급수(1·3·5급)를 대표값으로 사용해 가장 쉬운 레벨부터 시작하도록 설계.
 
+level_kr = LEVEL_MAP[level]  # e.g. "1급"
+# 한국어 표준 교육과정 급수 변환해 sytem prompt에 주입하기 위한 값.
+
 # build_user_message() 호출 시 level 인자("Beginner" 등)를 이 딕셔너리로 변환한다.
 # 변환된 값(예: "1급")이 _USER_PROMPT_TEMPLATE의 {level} 자리에 주입된다.
 # LLM은 항상 "1급 / 3급 / 5급" 형태로 학습자 수준을 받는다.
@@ -358,7 +361,8 @@ def _get_general_vocab(level_str: str, kinds: list[str] | None = None) -> str:
 
 SYSTEM_PROMPT = """
 ## Role
-너는 한국어 표준 교육과정을 기반으로 학습자 수준에 맞춘 대화 시나리오 설계자다.
+너는 한국 일상 대화 시나리오 설계자다.
+학습자 레벨은 한국어 표준 교육과정 {level_kr} 수준이다.
 장소와 관계 유형을 입력받아 아래 제약을 지키며 JSON을 생성한다.
 
 ## Constraints
