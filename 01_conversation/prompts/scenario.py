@@ -597,7 +597,9 @@ def build_system_prompt(level: str = "Beginner") -> str:
     # SYSTEM_PROMPT 안의 {level_kr} 자리에 .format()으로 주입된다.
     # (SYSTEM_PROMPT는 일반 문자열이므로 .format() 호출 전까지 {level_kr}은 텍스트 그대로 남아 있음)
     level_kr = LEVEL_MAP.get(level, "1급")
-    return SYSTEM_PROMPT.format(level_kr=level_kr)
+    # .format() 대신 .replace() 사용 — SYSTEM_PROMPT 안에 {dialogue_functions}, {location} 등
+    # 예시용 {} 텍스트가 섞여 있어 .format()을 쓰면 KeyError가 발생하기 때문.
+    return SYSTEM_PROMPT.replace("{level_kr}", level_kr)
 
 
 def build_user_message(
