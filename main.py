@@ -4,6 +4,7 @@ import argparse
 import os
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import gradio as gr
 
 from api.conversation_router import router as conversation_router
@@ -14,6 +15,13 @@ from app.orchestrator import orchestrator
 from app.ui import demo as gradio_demo
 
 app = FastAPI(title=settings.app_name)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(conversation_router)
 app.include_router(evaluation_router)
 app.include_router(review_router)
@@ -101,7 +109,9 @@ def _run_terminal_mode() -> None:
         )
 
         print("\n[Scenario(시나리오)]")
-        print(started.get("scenario_description", ""))  # 구 "scenario" 키 → "scenario_title" → 학습자 안내용 "scenario_description"으로 변경
+        print(
+            started.get("scenario_description", "")
+        )  # 구 "scenario" 키 → "scenario_title" → 학습자 안내용 "scenario_description"으로 변경
 
         print("\n[Participants(대화 참여자 설정)]")
         personas = started.get("personas", {})
@@ -168,18 +178,27 @@ def _run_terminal_mode() -> None:
         total_tokens = int(evaluated.get("SCK_total_tokens", 0))
         match_rate = float(evaluated.get("SCK_match_rate", 0.0))
         level_counts = evaluated.get("SCK_level_counts", {})
+        level_word_counts = evaluated.get("SCK_level_word_counts", {})
 
         print("\n[SCK 일치율]")
         print(f"{match_rate}% ({match_count}/{total_tokens})")
 
         print("\n[급수별 발생 표]")
-        print("급수 | 발생 횟수")
-        print("--- | ---")
+        print("급수 | 발생 횟수 | 사용 단어")
+        print("--- | --- | ---")
         if level_counts:
             for level, count in sorted(level_counts.items(), key=lambda x: int(x[0])):
-                print(f"{level}급 | {count}회")
+                words = level_word_counts.get(level, {})
+                parts = [
+                    word
+                    for word, word_count in sorted(
+                        words.items(), key=lambda x: (-x[1], x[0])
+                    )
+                ]
+                words_text = ", ".join(parts) if parts else "-"
+                print(f"{level}급 | {count}회 | {words_text}")
         else:
-            print("없음 | 0회")
+            print("없음 | 0회 | -")
 
         if evaluated.get("llm_summary"):
             print("\n[LLM Summary(LLM 요약)]")

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from kiwipiepy import Kiwi
 from services.llm_service import llm_service
 from ..state import EvaluationState
 
@@ -15,6 +16,28 @@ _SPELLING_SYSTEM_PROMPT = (
     "띄어쓰기 오류는 감점 대상에서 제외한다. "
     "반드시 JSON 객체만 출력한다."
 )
+_SPELLING_KIWI = Kiwi()
+
+
+def _is_proper_noun_expression(text: str) -> bool:
+    """오류 표현이 고유명사 중심이면 평가(감점/표시)에서 제외한다."""
+
+    tokens = _SPELLING_KIWI.tokenize(text)
+    lexical_tokens = [tok for tok in tokens if not tok.tag.startswith("S")]
+    if not lexical_tokens:
+        return False
+
+    # 조사/어미를 제외한 내용어 태그만 본다.
+    content_tags = [
+        tok.tag
+        for tok in lexical_tokens
+        if tok.tag.startswith("N") or tok.tag.startswith("V") or tok.tag.startswith("M")
+    ]
+    if not content_tags:
+        return False
+
+    # 내용어가 모두 고유명사(NNP)일 때 고유명사 표현으로 판정.
+    return all(tag == "NNP" for tag in content_tags)
 
 
 def _mark_basic_typos(text: str) -> tuple[str, int]:
@@ -82,6 +105,8 @@ def _apply_llm_highlight(text: str, items: list[dict[str, str]]) -> tuple[str, i
         right = str(item.get("corrected", "")).strip()
         if not wrong or not right:
             continue
+        if _is_proper_noun_expression(wrong):
+            continue
         if wrong not in highlighted:
             continue
         highlighted = highlighted.replace(wrong, f"[오류:{wrong}->{right}]", 1)
@@ -146,4 +171,7 @@ def evaluate_spelling(state: EvaluationState) -> EvaluationState:
     return {
         "spelling_score": round(max(0.0, score), 2),
         "highlighted_log": highlighted_log,
+        "spelling_typo_total": typo_total,
+        "spelling_user_turns": user_turns,
+        "spelling_penalty_ratio": round(penalty_ratio, 2),
     }

@@ -354,12 +354,21 @@ def evaluate_ui(user_id: str, week: int) -> tuple[str, str, str, str, str, int]:
     total_tokens = int(evaluated.get("SCK_total_tokens", 0))
     match_rate = float(evaluated.get("SCK_match_rate", 0.0))
     level_counts = evaluated.get("SCK_level_counts", {})
+    level_word_counts = evaluated.get("SCK_level_word_counts", {})
 
-    rows = ["급수 | 발생 횟수", "--- | ---"]
+    rows = ["급수 | 발생 횟수 | 사용 단어", "--- | --- | ---"]
     for level, count in sorted(level_counts.items(), key=lambda x: int(x[0])):
-        rows.append(f"{level}급 | {count}회")
+        words = level_word_counts.get(level, {})
+        parts = [
+            word
+            for word, word_count in sorted(words.items(), key=lambda x: (-x[1], x[0]))
+        ]
+        words_text = ", ".join(parts) if parts else "-"
+        rows.append(f"{level}급 | {count}회 | {words_text}")
     level_table = (
-        "\n".join(rows) if level_counts else "급수 | 발생 횟수\n--- | ---\n없음 | 0회"
+        "\n".join(rows)
+        if level_counts
+        else "급수 | 발생 횟수 | 사용 단어\n--- | --- | ---\n없음 | 0회 | -"
     )
 
     sck_text = (
