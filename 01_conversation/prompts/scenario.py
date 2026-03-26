@@ -324,6 +324,7 @@ SYSTEM_PROMPT = """
     ~하고 싶고/~합니다 부분은 각 persona의 mission을 바탕으로 작성
     relationship_type은 첫 문장에 자연스러운 한국어로 녹여 표현할 것
     Example)
+<<<<<<< HEAD
       친구 / 연인        → "{location}에서 만난 [relationship_type]인 두 사람의 대화입니다."
       선배-후배 / 선생님-학생 → "{location}에서 함께하는 [A.role]과 [B.role]의 대화입니다."
       낯선 사람          → "{location}에서 처음 만난 두 사람의 대화입니다."
