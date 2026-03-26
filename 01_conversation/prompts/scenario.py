@@ -324,10 +324,11 @@ SYSTEM_PROMPT = """
     ~하고 싶고/~합니다 부분은 각 persona의 mission을 바탕으로 작성
     relationship_type은 첫 문장에 자연스러운 한국어로 녹여 표현할 것
     Example)
-      친구 / 연인        → "{location}에서 만난 [relationship_type]인 두 사람의 대화입니다."
-      선배-후배 / 선생님-학생 → "{location}에서 함께하는 [A.role]과 [B.role]의 대화입니다."
-      낯선 사람          → "{location}에서 처음 만난 두 사람의 대화입니다."
-  - Constraint: 첫 문장에 {location}이 자연스럽게 포함될 것
+        친구 / 연인        → "{{location}}에서 만난 [relationship_type]인 두 사람의 대화입니다."
+        선배-후배 / 선생님-학생 → "{{location}}에서 함께하는 [A.role]과 [B.role]의 대화입니다."
+        낯선 사람          → "{{location}}에서 처음 만난 두 사람의 대화입니다."
+      - Constraint: 첫 문장에 {{location}}이 자연스럽게 포함될 것
+  - Constraint: 학습자 수준({korean_level})에 맞는 어휘 사용
 
 ### ⑤ expression
   - 어휘와 문법은 유저 프롬프트에서 주어진 학습자 수준에 맞게 작성
@@ -423,6 +424,72 @@ _USER_PROMPT_TEMPLATE = """
 {general_vocab}
 """
 
+# LEVEL_MAP: 서비스 레벨(3단계) → 한국어 급수 진입점 매핑
+#
+# 서비스는 Beginner / Intermediate / Advanced 3단계로 구성되며,
+# 각 단계 안에서 사용자 진행도에 따라 세부 티어(급수)가 올라간다.
+#
+#   Beginner    → 1급(진입) ~ 2급(숙달)
+#   Intermediate → 3급(진입) ~ 4급(숙달)
+#   Advanced    → 5급(진입) ~ 6급(숙달)
+#
+# 이 맵은 각 서비스 레벨의 진입 급수를 가리킨다.
+# 세부 티어 로직은 추후 사용자 진행도 시스템과 연동 예정.
+LEVEL_MAP: dict[str, str] = {
+    "Beginner": "1급",
+    "Intermediate": "3급",
+    "Advanced": "5급",
+}
+
+# 한국어 표준 교육과정에 기반한 교재들의 급수별 말하기 목표를 종합한 것으로,
+# 페르소나 mission을 교육적 근거 위에서 생성하기 위한 비계(scaffolding) 역할을 한다.
+# 카테고리(요청자-조력자 / 각자 목표 / 자유 선택)는 A·B 간 mission을 자연스럽게
+# 분배하기 위한 분류 기준이다.
+# build_user_message() 호출 시 급수를 키로 카테고리별 목록을 포맷팅해 주입한다.
+# → {dialogue_functions} 자리에 "[카테고리] 기능1 | 기능2 | ..." 형태로 렌더링된다.
+DIALOGUE_FUNCTIONS: dict[str, dict[str, list[str]]] = {
+    "1급": {
+        "요청자-조력자": ["장소 묻기", "물건 사기", "음식 주문하기", "시간 묻기"],
+        "각자 목표": [
+            "일상 묻기",
+            "취향 묻기",
+            "경험 묻기",
+            "기분 묻기",
+            "날씨/풍경 묻기",
+            "어제/주말에 한 일 묻기",
+        ],
+        "자유 선택": ["자기소개", "약속 정하기"],
+    },
+    "2급": {
+        "요청자-조력자": [
+            "음식 주문하기",
+            "물건 비교하기",
+            "교환/환불 요청하기",
+            "교통/길 찾기",
+            "전화 통화하기",
+            "허락 구하기",
+            "도움 요청하기",
+            "거절하기",
+        ],
+        "각자 목표": [
+            "안부/근황 묻기",
+            "외모/성격 묘사하기",
+            "가족/고향 소개하기",
+            "여행 계획 말하기",
+        ],
+        "자유 선택": [
+            "감정 표현하기",
+            "건강 상태 설명하기",
+            "모임 제안하기",
+            "미래 계획 말하기",
+        ],
+    },
+}
+
+# 지원하는 관계 유형 목록. build_user_message 호출 시 랜덤으로 하나 선택된다.
+# MVP 대표 페르소나(20대 유학생)가 친밀도·위계에 따른 적절한 한국어 표현을 학습할 수 있도록
+# 동등(친구·연인) / 수직(선배-후배·선생님-학생) / 초면(낯선 사람)의 스펙트럼을 커버한다.
+RELATIONSHIP_TYPES = ["친구", "선배-후배", "연인", "선생님-학생", "낯선 사람"]
 # ----------------------------------------------------------------
 # [왜 이 함수가 필요한가?]
 #
@@ -510,8 +577,10 @@ def _get_persona_vocab(level_str: str, location: str) -> list[str]:
     #    → 빈 리스트면 general만 반환하게 됨 (한강 외 장소는 현재 이 케이스)
     location_roles = _LOCATION_VOCAB.get(location, {}).get("역할", [])
 
-    # ③ 일반 직업 → 장소 역할 순으로 이어붙여 반환
-    return general + location_roles
+def build_user_message(
+    location: str, korean_level: str = "Beginner", location_context: str = ""
+) -> str:
+    """유저 프롬프트를 반환한다.
 
 
 def build_system_prompt() -> str:
@@ -525,8 +594,7 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
     # DIALOGUE_FUNCTIONS[level_str]의 카테고리별 항목을
     # "[카테고리] 기능1 | 기능2 | ..." 형태로 조합해 {dialogue_functions}에 주입
     dialogue_functions = "\n   ".join(
-        f"[{category}] {' | '.join(items)}"
-        for category, items in funcs.items()
+        f"[{category}] {' | '.join(items)}" for category, items in funcs.items()
     )
     activities = _get_activities(location)
     if relationship_type == "낯선 사람":
