@@ -68,7 +68,7 @@ PERSONA_VOCAB: dict[str, list[str]] = {
         "아주머니", "아저씨", "할머니", "할아버지",
         "가게 주인", "식당 주인", "카페 주인", "서점 주인",
         "편의점 주인", "편의점 직원", "백화점 직원",
-        "은행 직원", "호텔 직원", "병원 직원",
+        "은행 직원", "호텔 직원", "병원 직원", "배달 기사",
     ],
 }
 # 관계 유형이 "낯선 사람"일 때 B 페르소나의 직업·신분 어휘로 사용.
@@ -80,23 +80,41 @@ PERSONA_VOCAB: dict[str, list[str]] = {
 # 이 목록에 추가하지 않고 location_vocab 단에서 다룬다.
 # → 일반 직업(배달 기사, 회사원 등)만 여기서 관리.
 
-_ACTIVITIES: dict[str, list[str]] = {
-    "한강": [
-        # [구매/주문] → 음식 주문하기, 물건 사기
-        "편의점에서 간식 사기", "카페에서 음료 주문하기", "카페에서 디저트 주문하기",
-        "배달 음식 주문하기", "피크닉 용품 빌리기",
-        # [시설 이용/위치] → 장소 묻기
-        "가까운 화장실 찾기", "지하철역 가는 길 묻기", "편의점 찾기", "카페 찾기", "쓰레기통 찾기",
-        # [시간/계획] → 시간 묻기, 약속 정하기
-        "분수 쇼 시작 시간 확인하기", "친구와 만날 장소 정하기",
-        "수영장 운영 시간 묻기", "음식 메뉴 고르기",
-        # [경험/일상] → 경험 묻기, 취향 묻기, 기분 묻기, 일상 묻기, 자기소개
-        "오늘 기분이 어떤지 이야기하기", "좋아하는 노래 같이 듣기",
-        "러닝 크루에서 자기소개하기", "한강에 자주 오는지 묻기",
-        # [감상/휴식] → 날씨/풍경 묻기
-        "무지개 분수 구경하기", "노을 사진 찍기",
-        "돗자리 펴고 쉬기", "야경 감상하며 산책하기",
-    ],
+_ACTIVITIES: dict[str, dict[str, list[str]]] = {
+    "한강": {
+        "구매/주문": [
+            "편의점에서 간식 사기", "카페에서 주문하기",
+            "배달 음식 주문하기", "피크닉 용품(텐트·테이블·돗자리) 빌리기", "푸드트럭에서 음식 고르기",
+        ],
+        "시설 이용/위치": [
+            "가까운 화장실 찾기", "지하철역 가는 길 묻기", "편의점 찾기", "카페 찾기",
+            "쓰레기통 찾기", "자전거 도로 위치 묻기", "한강 공원 안내소 찾기",
+            "배달 존 찾기", "오리배 타는 곳 묻기", "따릉이 빌리는 곳 찾기",
+            "한강에서 보이는 건물이 뭔지 묻기",
+        ],
+        "시간/계획": [
+            "반포 분수 쇼 시작 시간 확인하기", "친구와 만날 장소 정하기",
+            "수영장 운영 시간 묻기", "음식 메뉴 고르기",
+            "버스·지하철 막차 시간 확인하기", "불꽃축제 일정 물어보기", "한강 유람선 타는 시간 묻기"
+        ],
+        "경험/일상": [
+            "오늘 기분이 어떤지 이야기하기", "좋아하는 노래 같이 듣기",
+            "러닝 크루에서 자기소개하기", "한강에 자주 오는지 묻기",
+            "어떤 운동을 즐기는지 묻기", "처음 한강에 온 경험 이야기하기",
+            "한강에서 라면 먹어 본 경험 묻기", "어학당 소풍에서 자기소개하기",
+        ],
+        "감상/휴식": [
+            "반포 무지개 분수 구경하기", "노을 사진 찍기",
+            "돗자리 펴고 쉬기", "야경 감상하기", "산책하기",
+            "강바람 맞으며 오늘 하루 이야기하기", "한강 불꽃놀이 이야기하기",
+            "버스킹 공연 구경하기", "새 관찰하기", 
+        ],
+        "스포츠/활동": [
+            "배드민턴 같이 치기", "러닝 코스 추천받기",
+            "인라인 스케이트 타는 법 묻기", "한강 수영장 이용 방법 묻기",
+            "오리배 타는 방법 묻기", "따릉이 타기",
+        ],
+    },
 }
 # 장소별 활동 풀(_ACTIVITIES) — LLM이 적합한 활동을 고르게 선택하도록 돕는 참고 목록.
 #
@@ -111,13 +129,14 @@ _ACTIVITIES: dict[str, list[str]] = {
 #   어휘 다양성은 프롬프트 하단 ## 참고 어휘 섹션이 담당한다.
 #
 # [주입 방식]
-#   build_user_message() 호출 시 전체 목록을 {activities}에 주입.
-#   장소별 편중이 확인되면 _ACTIVITY_CAUTIONS에 Caution 문구를 추가해 프롬프트 레벨에서 제어.
+#   build_user_message() 호출 시 카테고리별 n개씩 샘플링해 {activities}에 주입.
+#   → 6개 카테고리 × 2개 = 매 호출마다 12개의 균형 잡힌 서브셋 제공.
+#   장소별 편중이 확인되면 _ACTIVITY_CAUTIONS에 Caution 문구를 추가해 프롬프트 레벨에서 제어. [현재 비활성화]
 
 
-_ACTIVITY_CAUTIONS: dict[str, str] = {
-    "한강": "자전거 관련 활동에 편중되지 말 것.",
-}
+# _ACTIVITY_CAUTIONS: dict[str, str] = {
+#     "한강": "자전거·돗자리 관련 활동에 편중되지 말 것.",
+# }
 # 장소별로 LLM이 특정 활동에 과도하게 편중되는 경우 여기에 추가한다.
 # 해당 장소의 주의 문구가 없으면 빈 문자열이 주입된다.
 
@@ -163,6 +182,7 @@ SYSTEM_PROMPT = """
 
 ### ③ mission
   - A·B 각 persona가 이 대화를 통해 달성하고 싶은 목표 (30자 이내)
+  - 음식·물건이 포함되는 경우 구체적인 이름을 쓸 것 (예: 간식 → 떡볶이, 음료 → 아메리카노)
   - mission 구조는 {dialogue_functions}의 [] 태그를 따른다.
     카테고리는 [요청자-조력자] / [각자 목표] / [자유 선택] 세 가지다.
     [요청자-조력자] → A는 요청자, B는 조력자
@@ -236,16 +256,16 @@ _USER_PROMPT_TEMPLATE = """
 관계 유형: {relationship_type}
 
 ## 실행 순서
-0. [입력 확인] {relationship_type} — 주어진 값 그대로 사용
+0. [입력 확인] 아래 값은 코드가 주입한 것으로 그대로 사용한다.
+   - relationship_type: {relationship_type}
+   - 활동 풀: {activities}
+   - dialogue_function 풀: {dialogue_functions}
 
 1. [활동 선택] {relationship_type}과 가장 자연스러운 활동 선택
    낯선 사람 → 반드시 1개만 선택 | 나머지 → 1~2개 선택
-   {activity_caution}Note) 아래 목록 전체를 고르게 참고할 것.
-     {activities}
+   Note) 활동 풀 전체를 고르게 참고할 것.
 
-2. [dialogue_function 확정] 선택한 활동에 가장 자연스럽게 연결되는 dialogue_function을 아래 목록에서 확정
-
-   {dialogue_functions}
+2. [dialogue_function 확정] 선택한 활동에 가장 자연스럽게 연결되는 dialogue_function을 dialogue_function 풀에서 확정
 
 3. [personas 설정] (## Constraints ① role 규칙 준수)
 
@@ -268,18 +288,18 @@ _USER_PROMPT_TEMPLATE = """
 }}
 
 예시 2 - 입력: 장소=카페, 관계 유형=연인 → [각자 목표] + 외국인 이름 B
-{{ "scenario_title": "카페에서 디저트 이야기를 나누는 연인",
-  "scenario_description": "카페에서 만난 연인 관계인 두 사람의 대화입니다. 현아는 제이크가 좋아하는 음료를 알고 싶고, 제이크는 현아의 오늘 기분이 궁금합니다.",
+{{ "scenario_title": "카페에서 취향을 나누는 연인",
+  "scenario_description": "카페에서 만난 연인 관계인 두 사람의 대화입니다. 현아는 제이크가 아메리카노를 좋아하는지 알고 싶고, 제이크는 현아의 오늘 기분이 궁금합니다.",
   "location": "카페",
   "dialogue_function": ["취향 묻기", "기분 묻기"], "relationship_type": "연인",
   "personas": {{
-    "A": {{ "name": "현아", "age": "23", "gender": "여", "role": "여자 친구", "mission": "남자 친구가 좋아하는 음료를 알고 싶어요." }},
+    "A": {{ "name": "현아", "age": "23", "gender": "여", "role": "여자 친구", "mission": "남자 친구가 아메리카노를 좋아하는지 알고 싶어요." }},
     "B": {{ "name": "제이크", "age": "24", "gender": "남", "role": "남자 친구", "mission": "여자 친구의 오늘 기분을 알고 싶어요." }}
   }}
 }}
 
 ## 참고 어휘
-{persona_vocab}음식: 김밥, 라면, 떡볶이, 치킨, 딸기, 귤, 사과, 바나나, 빵, 아이스크림
+{persona_vocab}
 동사: 가다, 오다, 알다, 모르다, 찾다, 묻다, 사다, 먹다, 마시다, 만나다, 기다리다, 좋아하다, 싫어하다, 지내다, 다니다
 형용사: 좋다, 가깝다, 멀다, 많다, 싸다, 비싸다, 맛있다, 바쁘다, 괜찮다
 """
@@ -322,21 +342,25 @@ def clean_dialogue_functions(items: list[str]) -> list[str]:
     """
     return [re.sub(r"^\[.*?\]\s*", "", item).strip() for item in items]
 
-def _get_activities(location: str) -> tuple[str, str]:
-    """_ACTIVITIES에서 location에 해당하는 전체 활동 목록을 반환한다.
+def _get_activities(location: str, n_per_category: int = 2) -> str:
+    """_ACTIVITIES에서 location에 해당하는 카테고리별 활동을 샘플링해 반환한다.
 
     Returns:
         activities_str   — 프롬프트용 활동 목록 문자열 ({activities} 자리에 주입)
-        activity_caution — 장소별 편중 주의 문구 ({activity_caution} 자리에 주입, 없으면 "")
+        # activity_caution — 장소별 편중 주의 문구 ({activity_caution} 자리에 주입, 없으면 "") [비활성화]
 
+    카테고리별로 n_per_category개씩 무작위 샘플링해 균형 잡힌 서브셋을 제공한다.
     location이 _ACTIVITIES에 없으면 빈 문자열을 반환한다.
     """
-    pool = _ACTIVITIES.get(location)
-    if not pool:
-        return "(활동 목록 없음 — 장소에 맞게 자유롭게 선택하세요.)", ""
-    activities_str = ", ".join(pool)
-    activity_caution = _ACTIVITY_CAUTIONS.get(location, "")
-    return activities_str, activity_caution
+    categories = _ACTIVITIES.get(location)
+    if not categories:
+        return "(활동 목록 없음 — 장소에 맞게 자유롭게 선택하세요.)"
+    sampled = []
+    for items in categories.values():
+        sampled.extend(random.sample(items, min(n_per_category, len(items))))
+    activities_str = ", ".join(sampled)
+    # activity_caution = _ACTIVITY_CAUTIONS.get(location, "")
+    return activities_str  # , activity_caution
 
 
 def build_system_prompt() -> str:
@@ -353,8 +377,9 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
         f"[{category}] {' | '.join(items)}"
         for category, items in funcs.items()
     )
-    activities, activity_caution = _get_activities(location)
-    caution_str = f"Caution) {activity_caution}\n   " if activity_caution else ""
+    activities = _get_activities(location)
+    # activity_caution = ...  # _ACTIVITY_CAUTIONS 비활성화 중
+    caution_str = ""
     if relationship_type == "낯선 사람":
         vocab_list = PERSONA_VOCAB.get(level_str, PERSONA_VOCAB["1급"])
         persona_vocab = "인물 (낯선 사람 B 전용): " + ", ".join(vocab_list) + "\n"
@@ -372,21 +397,67 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 
 
 # ================================================================
+# 전체 로직 흐름
+# ================================================================
+#
+# ┌─────────────────────────────────────────────────────────────┐
+# │  build_user_message(location, level) 호출                   │
+# └──────────────────────────┬──────────────────────────────────┘
+#                            │
+#          ┌─────────────────┼──────────────────────┐
+#          ▼                 ▼                      ▼
+#   [관계 유형 결정]   [활동 샘플링]         [대화 기능 목록 구성]
+#   _RELATIONSHIP_TYPES  _ACTIVITIES           DIALOGUE_FUNCTIONS
+#   에서 random.choice   [location][category]  [level]의 카테고리별
+#   → relationship_type  에서 카테고리당 2개    기능 목록을 포맷팅
+#                        random.sample         → dialogue_functions
+#                        → activities_str
+#                        # + _ACTIVITY_CAUTIONS [비활성화]
+#                        # → activity_caution   [비활성화]
+#          │                 │                      │
+#          └─────────────────┼──────────────────────┘
+#                            │
+#          ┌─────────────────┼──────────────────────┐
+#          ▼                 ▼                      ▼
+#   [인물 어휘 결정]   _USER_PROMPT_TEMPLATE 에 변수 주입
+#   relationship_type  {level} {location} {relationship_type}
+#   == "낯선 사람"     {activities} {dialogue_functions} {persona_vocab}
+#   → PERSONA_VOCAB    # {activity_caution} [비활성화]
+#     [level] 주입
+#   else → ""
+#                            │
+#                            ▼
+#                   [LLM 실행 순서 (step 0~6)]
+#                   0. 입력 확인 — relationship_type·활동 풀·
+#                      dialogue_function 풀 전체를 확정
+#                   1. 활동 선택 (활동 풀에서)
+#                      → 낯선 사람: 1개 / 나머지: 1~2개
+#                   2. 활동 → dialogue_function 매핑
+#                      (dialogue_function 풀에서 선택)
+#                   3. personas 설정 (role·age 제약 준수)
+#                   4. mission 생성
+#                      (dialogue_function 카테고리 구조 따름,
+#                       음식·물건은 구체적 이름 사용)
+#                   5. scenario_description 생성
+#                   6. JSON 출력
+#
+# ================================================================
 # 현재 파일 상황 (as-is)
 # ================================================================
-
+#
 # [코드가 처리]
 # - 관계 유형: random.choice → {relationship_type} 주입
 # - 학습자 수준: LEVEL_MAP으로 변환 → {level} 주입
 # - 대화 기능 목록: DIALOGUE_FUNCTIONS[급수] 카테고리별 포맷팅 → {dialogue_functions} 주입
-# - 장소 활동 목록: 하드코딩 (유저 프롬프트 참고 블록) → [3] 완료 후 동적 주입 예정
+# - 장소 활동 목록: _ACTIVITIES[location] 카테고리별 2개 샘플링 → {activities} 주입
+# - 편중 제어: _ACTIVITY_CAUTIONS[location] → {activity_caution} 주입 [현재 비활성화]
 # - 인물 어휘: PERSONA_VOCAB[급수] → "낯선 사람"일 때만 {persona_vocab} 주입
-# - 참고 어휘(음식·동사·형용사): 하드코딩 → [2] 완료 후 동적 주입 예정
+# - 참고 어휘(동사·형용사): 하드코딩 → [2] 완료 후 동적 주입 예정
 
 # [LLM이 처리]
-# 0. relationship_type 확인 (주어진 값 그대로)
-# 1. 장소 활동 중 relationship_type과 자연스러운 것 선택
-# 2. 선택한 활동에 맞는 dialogue_function 확정
+# 0. 입력 확인 — relationship_type / 활동 풀 / dialogue_function 풀 전체 확정 (주어진 값 그대로)
+# 1. 활동 풀에서 relationship_type과 자연스러운 활동 선택
+# 2. 선택한 활동에 맞는 dialogue_function을 dialogue_function 풀에서 확정
 # 3. personas 설정 (## 제약 ① 준수)
 # 4. mission 생성 (## 제약 ③ 준수)
 # 5. scenario_description 생성 (## 제약 ④ 준수, mission 참고)
@@ -438,8 +509,9 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 # [3] topic DB 설계 ← [2] 검증 후 시나리오 여전히 밋밋하면
 #
 # as-is (현재 구조):
-#   _ACTIVITIES dict — 장소별 활동 목록 (행위 수준 문자열, 전체 주입)
-#   → 편중 방지: _ACTIVITY_CAUTIONS로 프롬프트 레벨 제어
+#   _ACTIVITIES dict — 장소별 활동 목록 (행위 수준 문자열)
+#   → 카테고리별 2개 샘플링 → step 0 "활동 풀"로 주입 (LLM이 step 0에서 확인, step 1에서 선택)
+#   → 편중 방지: _ACTIVITY_CAUTIONS 비활성화 중 (샘플링으로 대체)
 #   → location_vocab 미사용 (stub 상태) — To-do [3] 완료 후 복원 예정
 #   → Python dict 하드코딩 (한강·지하철·편의점 3개 장소)
 #
