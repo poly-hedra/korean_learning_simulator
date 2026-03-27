@@ -565,6 +565,8 @@ DIALOGUE_FUNCTIONS: dict[str, dict[str, list[str]]] = {
 # MVP 대표 페르소나(20대 유학생)가 친밀도·위계에 따른 적절한 한국어 표현을 학습할 수 있도록
 # 동등(친구·연인) / 수직(선배-후배·선생님-학생) / 초면(낯선 사람)의 스펙트럼을 커버한다.
 RELATIONSHIP_TYPES = ["친구", "선배-후배", "연인", "선생님-학생", "낯선 사람"]
+
+
 # ----------------------------------------------------------------
 # [왜 이 함수가 필요한가?]
 #
@@ -668,8 +670,7 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
     # DIALOGUE_FUNCTIONS[level_str]의 카테고리별 항목을
     # "[카테고리] 기능1 | 기능2 | ..." 형태로 조합해 {dialogue_functions}에 주입
     dialogue_functions = "\n   ".join(
-        f"[{category}] {' | '.join(items)}"
-        for category, items in funcs.items()
+        f"[{category}] {' | '.join(items)}" for category, items in funcs.items()
     )
     activities = _get_activities(location)
     if relationship_type == "낯선 사람":
