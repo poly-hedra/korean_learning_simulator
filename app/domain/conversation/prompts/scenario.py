@@ -294,11 +294,11 @@ def _load_vocab() -> list[dict]:
     return _VOCAB_CACHE
 
 
-def _get_general_vocab(level_str: str, kinds: list[str] | None = None) -> str:
+def _get_general_vocab(korean_grade: str, kinds: list[str] | None = None) -> str:
     """vocabulary.json에서 급수·품사 필터 후 프롬프트용 문자열 반환.
 
     Args:
-        level_str: LEVEL_MAP으로 변환된 급수 문자열. 예) "1급", "3급", "5급"
+        korean_grade: LEVEL_MAP으로 변환된 급수 문자열. 예) "1급", "3급", "5급"
         kinds:     포함할 품사 목록. 기본값 ["동사", "형용사"].
                    명사까지 추가하려면 ["명사", "동사", "형용사"] 전달.
 
@@ -326,7 +326,7 @@ def _get_general_vocab(level_str: str, kinds: list[str] | None = None) -> str:
     """
     if kinds is None:
         kinds = ["동사", "형용사"]
-    prefix = level_str.replace("급", "_")  # "1급" → "1_", "3급" → "3_"
+    prefix = korean_grade.replace("급", "_")  # "1급" → "1_", "3급" → "3_"
     vocab = _load_vocab()
     grouped: dict[str, list[str]] = {k: [] for k in kinds}
     for entry in vocab:
@@ -387,7 +387,7 @@ SYSTEM_PROMPT = """
     "왜 지금 이 장소/활동에서 이 목표가 생겼는가"가 설명 가능해야 한다.
     Example) A mission: "상대방이 버스킹 공연을 자주 보러 오는지 알고 싶어요."
              B mission: "상대방이 좋아하는 음악 장르가 있는지 궁금해요."
-  - 단, 낯선 사람 → A는 정보 요청자, B는 조력자 (비대칭 구조)
+  - 단, 낯선 사람 → A는 정보 요청자, B는 조력자
     Example) A mission: "화장실이 어디에 있는지 알고 싶어요."
              B mission: "화장실 위치를 알려 주고 싶어요."
 
@@ -400,10 +400,10 @@ SYSTEM_PROMPT = """
     ~하고 싶고/~합니다 부분은 각 persona의 mission을 바탕으로 작성
     relationship_type은 첫 문장에 자연스러운 한국어로 녹여 표현할 것
     Example)
-        친구 / 연인        → "{{location}}에서 만난 [relationship_type]인 두 사람의 대화입니다."
-        선배-후배 / 선생님-학생 → "{{location}}에서 함께하는 [A.role]과 [B.role]의 대화입니다."
-        낯선 사람          → "{{location}}에서 처음 만난 두 사람의 대화입니다."
-      - Constraint: 첫 문장에 {{location}}이 자연스럽게 포함될 것
+        친구 / 연인        → "{location}에서 만난 [relationship_type]인 두 사람의 대화입니다."
+        선배-후배 / 선생님-학생 → "{location}에서 함께하는 [A.role]과 [B.role]의 대화입니다."
+        낯선 사람          → "{location}에서 처음 만난 두 사람의 대화입니다."
+      - Constraint: 첫 문장에 {location}이 자연스럽게 포함될 것
   - Constraint: 학습자 수준({korean_level})에 맞는 어휘 사용
 
 ### ⑤ expression
@@ -546,11 +546,11 @@ def _get_activities(location: str, n_per_category: int = 2) -> str:
     return activities_str
 
 
-def _get_persona_vocab(level_str: str, location: str) -> list[str]:
+def _get_persona_vocab(korean_grade: str, location: str) -> list[str]:
     """낯선 사람 B 페르소나 후보 어휘를 일반 + 장소 한정 역할 합산해 반환한다.
 
     Args:
-        level_str: "1급" / "3급" / "5급" — PERSONA_VOCAB 키로 사용
+        korean_grade: "1급" / "3급" / "5급" — PERSONA_VOCAB 키로 사용
         location:  장소명 — _LOCATION_VOCAB["역할"] 조회에 사용
 
     Returns:
@@ -570,17 +570,12 @@ def _get_persona_vocab(level_str: str, location: str) -> list[str]:
     """
     # ① 급수별 일반 직업 목록. 해당 급수 미정의 시 "1급"으로 폴백.
     #    (현재 PERSONA_VOCAB은 "1급"만 정의됨 — 2급 이상은 To-do [4])
-    general = PERSONA_VOCAB.get(level_str, PERSONA_VOCAB["1급"])
+    general = PERSONA_VOCAB.get(korean_grade, PERSONA_VOCAB["1급"])
 
     # ② 장소 한정 직함. location이 없거나 "역할" 키가 없으면 빈 리스트
     #    → 빈 리스트면 general만 반환하게 됨 (한강 외 장소는 현재 이 케이스)
     location_roles = _LOCATION_VOCAB.get(location, {}).get("역할", [])
-
-
-def build_user_message(
-    location: str, korean_level: str = "Beginner", location_context: str = ""
-) -> str:
-    """유저 프롬프트를 반환한다."""
+    return general + location_roles
 
 
 def build_system_prompt() -> str:
@@ -592,19 +587,19 @@ def build_user_message(
     location: str = "한강",
     relationship_type: str | None = None,
 ) -> str:
-    level_str = LEVEL_MAP.get(level, "1급")
+    korean_grade = LEVEL_MAP.get(level, "1급")
     relationship_type = (
         relationship_type
         if relationship_type in _RELATIONSHIP_TYPES
         else random.choice(_RELATIONSHIP_TYPES)
     )
-    funcs = DIALOGUE_FUNCTIONS.get(level_str, DIALOGUE_FUNCTIONS["1급"])
+    funcs = DIALOGUE_FUNCTIONS.get(korean_grade, DIALOGUE_FUNCTIONS["1급"])
     # TODO: "3급"·"5급" 데이터 추가 후 폴백 제거 — DIALOGUE_FUNCTIONS 주석 참고.
-    # DIALOGUE_FUNCTIONS[level_str] 목록을 " | " 구분으로 포맷팅해 {dialogue_functions}에 주입
+    # DIALOGUE_FUNCTIONS[korean_grade] 목록을 " | " 구분으로 포맷팅해 {dialogue_functions}에 주입
     dialogue_functions = " | ".join(funcs)
     activities = _get_activities(location)
     if relationship_type == "낯선 사람":
-        vocab_list = _get_persona_vocab(level_str, location)
+        vocab_list = _get_persona_vocab(korean_grade, location)
         persona_vocab = (
             "인물 (낯선 사람 B 전용 — B의 role 선택 시 이 목록에서 고를 것): "
             + ", ".join(vocab_list)
@@ -626,11 +621,11 @@ def build_user_message(
         if facilities
         else ""
     )
-    general_vocab = _get_general_vocab(level_str)
+    general_vocab = _get_general_vocab(korean_grade)
     # _USER_PROMPT_TEMPLATE 안의 {level}, {location}, {relationship_type} 등
     # 모든 {} 자리에 .format()으로 한꺼번에 값을 주입해 완성된 유저 프롬프트를 반환한다.
     return _USER_PROMPT_TEMPLATE.format(
-        level=level_str,
+        level=korean_grade,
         location=location,
         relationship_type=relationship_type,
         dialogue_functions=dialogue_functions,
