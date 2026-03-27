@@ -15,7 +15,7 @@ from ..dialogue_cleansing import (
     expand_vocab_word_forms,
     is_main_pos_tag,
     normalize_token_for_vocab,
-    resolve_entry_by_pos,
+    resolve_entries_by_pos,
 )
 from ..normalization_debug import maybe_log_irregular_samples
 from ..token_usage_persistence import append_token_usage_log
@@ -105,24 +105,31 @@ def _resolve_entry_by_llm(
     utterance: str,
     token_index: int,
     tokens,
+    candidates: list[dict[str, Any]],
 ) -> tuple[dict[str, Any] | None, float]:
-    """미해결 동음이의어를 LLM으로 판별한다."""
+    """품사 필터 후보 리스트에서 LLM으로 최종 엔트리를 선택한다.
 
-    candidates = _homonyms.get(match_key, [])
+    각 후보의 example 필드를 프롬프트에 포함해 문맥 기반 판별 정확도를 높인다.
+    """
+
     if len(candidates) <= 1:
-        return None, 0.0
+        return (candidates[0], 1.0) if candidates else (None, 0.0)
 
     left = max(0, token_index - 4)
     right = min(len(tokens), token_index + 5)
     local_context = " ".join(tok.form for tok in tokens[left:right])
     candidate_lines = [
-        f"- index={c.get('index')} | word={c.get('word')} | kind={c.get('kind')}"
+        (
+            f"- index={c.get('index')} | word={c.get('word')} | kind={c.get('kind')}"
+            f" | example={c.get('example', '없음')}"
+        )
         for c in candidates
     ]
 
     system_prompt = (
-        "너는 한국어 동음이의어 의미 판별기다. 후보 중 하나를 선택하거나 불확실하면 null을 반환한다. "
-        "반드시 JSON 객체만 반환한다."
+        "너는 한국어 동음이의어 의미 판별기다. "
+        "문장과 로컬 문맥, 그리고 각 후보의 example(용례)을 근거로 가장 적절한 후보를 선택하라. "
+        "불확실하면 null을 반환한다. 반드시 JSON 객체만 반환한다."
     )
     user_prompt = (
         f"표제어: {match_key}\n"
@@ -150,8 +157,8 @@ def _resolve_entry_by_llm(
     if not selected_index or str(selected_index).lower() == "null":
         return None, confidence
 
-    for entry in _vocab_entries.get(match_key, []):
-        if entry["index"] == str(selected_index):
+    for entry in candidates:
+        if str(entry.get("index")) == str(selected_index):
             return entry, confidence
 
     return None, confidence
@@ -268,7 +275,7 @@ def evaluate_vocab(state: EvaluationState) -> EvaluationState:
     level_word_counts: dict[str, dict[str, int]] = {}
     matched: dict[str, dict[str, str | int]] = {}
     unresolved_homonyms: dict[str, int] = {}
-    llm_cache: dict[tuple[str, str, str], tuple[dict[str, Any] | None, float]] = {}
+    llm_cache: dict[tuple[str, str, str, str], tuple[dict[str, Any] | None, float]] = {}
     suspicious_cache: dict[tuple[str, int, str, str], tuple[str | None, float]] = {}
     suspicious_token_reviews: list[dict[str, str]] = []
 
@@ -302,7 +309,12 @@ def evaluate_vocab(state: EvaluationState) -> EvaluationState:
             )
         utterance_token_logs.append({"utterance": utterance, "tokens": token_rows})
 
+        compound_consumed: set[int] = set()
+
         for token_idx, token in enumerate(tokens):
+            if token_idx in compound_consumed:
+                continue
+
             original_word = token.form
             normalized_word = (
                 normalize_token_for_vocab(token)
@@ -311,6 +323,84 @@ def evaluate_vocab(state: EvaluationState) -> EvaluationState:
             )
             source = ""
             confidence = 0.0
+
+            # --- 복합 매칭 블록 ---
+            # XSN(접미사) 복합 매칭: 선생+님=선생님
+            # XR+XSA/XSV(어근+하다) 복합 매칭: 조용+하다=조용하다
+            compound_key: str | None = None
+            compound_tag: str | None = None
+            consumed_idx: int | None = None
+
+            if (
+                is_main_pos_tag(token.tag)
+                and token_idx + 1 < len(tokens)
+                and tokens[token_idx + 1].tag == "XSN"
+            ):
+                compound_key = canonicalize_word(
+                    token.form + tokens[token_idx + 1].form
+                )
+                compound_tag = token.tag
+                consumed_idx = token_idx + 1
+
+            elif (
+                token.tag == "XR"
+                and token_idx + 1 < len(tokens)
+                and tokens[token_idx + 1].tag in {"XSA", "XSV"}
+            ):
+                compound_key = canonicalize_word(token.form + "하다")
+                compound_tag = "VA" if tokens[token_idx + 1].tag == "XSA" else "VV"
+                consumed_idx = token_idx + 1
+
+            if compound_key and compound_key in _vocab_map and consumed_idx is not None:
+                compound_candidates = resolve_entries_by_pos(
+                    match_key=compound_key,
+                    token_tag=compound_tag or token.tag,
+                    vocab_entries=_vocab_entries,
+                    homonyms=_homonyms,
+                )
+                if compound_candidates:
+                    compound_entry = compound_candidates[0]
+                    source = "복합매칭"
+                    confidence = 1.0
+                    compound_consumed.add(consumed_idx)
+
+                    level = str(compound_entry["level"])
+                    matched_occurrences += 1
+                    level_counts[level] = level_counts.get(level, 0) + 1
+                    if level not in level_word_counts:
+                        level_word_counts[level] = {}
+                    level_word_counts[level][compound_key] = (
+                        level_word_counts[level].get(compound_key, 0) + 1
+                    )
+
+                    if compound_key not in matched:
+                        matched[compound_key] = {
+                            "original_word": token.form + tokens[consumed_idx].form,
+                            "normalized_word": compound_key,
+                            "index": str(compound_entry["index"]),
+                            "kind": str(compound_entry["kind"]),
+                            "level": level,
+                            "source": source,
+                            "confidence": 1.0,
+                            "count": 1,
+                        }
+                    else:
+                        matched[compound_key]["count"] = (
+                            int(matched[compound_key]["count"]) + 1
+                        )
+
+                    token_row_index = token_row_indices.get(id(token))
+                    if token_row_index is not None:
+                        token_rows[token_row_index]["matched"] = "O"
+                        token_rows[token_row_index]["normalized"] = compound_key
+                        token_rows[token_row_index]["vocab_index"] = str(
+                            compound_entry["index"]
+                        )
+                        token_rows[token_row_index]["vocab_example"] = str(
+                            compound_entry.get("example", "")
+                        )
+                        token_rows[token_row_index]["confidence"] = "1.00"
+                    continue
 
             if _is_suspicious_pattern(tokens, token_idx):
                 suspicious_key = (utterance, token_idx, token.form, token.tag)
@@ -358,54 +448,59 @@ def evaluate_vocab(state: EvaluationState) -> EvaluationState:
                     token_rows[token_row_index]["confidence"] = f"{confidence:.2f}"
                 continue
 
-            selected_entry = resolve_entry_by_pos(
+            candidates = resolve_entries_by_pos(
                 match_key=match_key,
                 token_tag=token.tag,
                 vocab_entries=_vocab_entries,
                 homonyms=_homonyms,
             )
-            if selected_entry is None:
-                if match_key in _homonyms:
-                    cache_key = (match_key, utterance, token.tag)
-                    if cache_key not in llm_cache:
-                        llm_cache[cache_key] = _resolve_entry_by_llm(
-                            match_key=match_key,
-                            token_tag=token.tag,
-                            utterance=utterance,
-                            token_index=token_idx,
-                            tokens=tokens,
-                        )
-                    llm_entry, llm_conf = llm_cache[cache_key]
-                    confidence = llm_conf
-                    if (
-                        llm_entry is not None
-                        and confidence >= _LLM_WSD_CONFIDENCE_THRESHOLD
-                    ):
-                        selected_entry = llm_entry
-                        if not source:
-                            source = "LLM 확정"
-                    else:
-                        unresolved_homonyms[match_key] = (
-                            unresolved_homonyms.get(match_key, 0) + 1
-                        )
-                        token_row_index = token_row_indices.get(id(token))
-                        if token_row_index is not None and confidence > 0:
-                            token_rows[token_row_index]["confidence"] = (
-                                f"{confidence:.2f}"
-                            )
-                        continue
+
+            selected_entry = None
+
+            if len(candidates) == 0:
+                token_row_index = token_row_indices.get(id(token))
+                if token_row_index is not None and confidence > 0:
+                    token_rows[token_row_index]["confidence"] = f"{confidence:.2f}"
+                continue
+
+            elif len(candidates) == 1:
+                selected_entry = candidates[0]
+                if not source:
+                    source = "단일항목 확정"
+                confidence = max(confidence, 1.0)
+
+            else:
+                # 후보가 2개 이상이면 LLM이 example 기반으로 최종 판별
+                candidate_sig = "|".join(
+                    sorted(str(c.get("index", "")) for c in candidates)
+                )
+                cache_key = (match_key, utterance, token.tag, candidate_sig)
+
+                if cache_key not in llm_cache:
+                    llm_cache[cache_key] = _resolve_entry_by_llm(
+                        match_key=match_key,
+                        token_tag=token.tag,
+                        utterance=utterance,
+                        token_index=token_idx,
+                        tokens=tokens,
+                        candidates=candidates,
+                    )
+
+                llm_entry, llm_conf = llm_cache[cache_key]
+                confidence = llm_conf
+
+                if llm_entry is not None and llm_conf >= _LLM_WSD_CONFIDENCE_THRESHOLD:
+                    selected_entry = llm_entry
+                    if not source:
+                        source = "LLM 후보재판단 확정"
                 else:
+                    unresolved_homonyms[match_key] = (
+                        unresolved_homonyms.get(match_key, 0) + 1
+                    )
                     token_row_index = token_row_indices.get(id(token))
                     if token_row_index is not None and confidence > 0:
                         token_rows[token_row_index]["confidence"] = f"{confidence:.2f}"
                     continue
-            else:
-                if not source:
-                    if match_key in _homonyms:
-                        source = "품사필터 확정"
-                    else:
-                        source = "단일항목 확정"
-                    confidence = 1.0
 
             level = str(selected_entry["level"])
             matched_occurrences += 1

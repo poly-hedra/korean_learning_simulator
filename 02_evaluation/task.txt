@@ -1,0 +1,6 @@
+패턴	예시	원인	영향도
+NNG+XSV/XSA -하다 분리	"공부하다" → 공부(NNG) + 하(XSV). vocabulary에 "공부하다"만 있고 "공부"가 없으면 미매칭	Kiwi가 분리, XSV는 MAIN_POS에 없음	높음
+XR(어근) 미처리	"조용하다" → 조용(XR) + 하(XSA). XR은 MAIN_POS_TAGS에 없어서 건너뜀	vocabulary에 "조용하다"가 있어도 매칭 불가	높음
+NNG+NNG 복합명사	vocabulary에 "꽃잎"이 있는데 Kiwi가 꽃(NNG) + 잎(NNG)으로 분리	XSN처럼 합성 조회 필요	중간
+축약형/줄임말	"뭐"(←무엇), "걔"(←그 아이), "전"(←저는)	Kiwi lemma가 원형 복원 못 할 수 있음	중간
+피동/사동 파생	"잡히다"(←잡다), "먹이다"(←먹다). vocabulary에 원형만 있으면 파생형 미매칭	Kiwi lemma가 "잡히다"로 복원하지 "잡다"까지는 안 감	낮음 (별도 표제어일 가능성)

@@ -22,7 +22,7 @@ TAG_KIND_HINTS = {
     "MAJ": ["부사"],
     "NNG": ["명사", "의존명사"],
     "NNP": ["명사"],
-    "NNB": ["의존명사", "명사"],
+    "NNB": ["의존명사"],
     "NP": ["대명사"],
     "NR": ["수사"],
     "VV": ["동사"],
@@ -139,3 +139,48 @@ def resolve_entry_by_pos(
                 return entry
 
     return None
+
+
+def resolve_entries_by_pos(
+    match_key: str,
+    token_tag: str,
+    vocab_entries: dict[str, list[dict[str, str]]],
+    homonyms: dict[str, list[dict[str, str]]],
+) -> list[dict[str, str]]:
+    """품사 기반으로 후보 엔트리 리스트를 반환한다.
+
+    동음이의어가 아니면 단일 후보 리스트를 반환하고,
+    동음이의어면 품사 필터를 적용한 후보 전부를 반환한다.
+    후보가 여러 개면 호출자가 LLM 등으로 최종 판별해야 한다.
+    """
+
+    entries = vocab_entries.get(match_key, [])
+    if not entries:
+        return []
+
+    # 동음이의어가 아니면 단일 후보 — 단, POS↔kind 교차 검증
+    if match_key not in homonyms:
+        kind_hints = TAG_KIND_HINTS.get(base_pos_tag(token_tag), [])
+        if kind_hints:
+            entry = entries[0]
+            entry_kind = str(entry.get("kind", ""))
+            if not any(hint in entry_kind for hint in kind_hints):
+                return []  # 품사 불일치 → 매칭 거부
+        return entries[:1]
+
+    candidates = homonyms[match_key]
+    kind_hints = TAG_KIND_HINTS.get(base_pos_tag(token_tag), [])
+    filtered = [
+        candidate
+        for candidate in candidates
+        if any(hint in str(candidate.get("kind", "")) for hint in kind_hints)
+    ]
+
+    if not filtered:
+        # 품사 필터가 비면 전체 후보 반환 (LLM이 최종 선택)
+        filtered = candidates
+
+    # homonym 엔트리의 index로 vocab_entries에서 상세 정보(example 포함)를 매칭
+    filtered_indices = {str(c.get("index", "")) for c in filtered}
+    result = [e for e in entries if e["index"] in filtered_indices]
+    return result if result else entries

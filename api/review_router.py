@@ -76,9 +76,9 @@ class WeeklyReviewResponse(BaseModel):
                         "example": "반포한강공원! 여기서 그렇게 멀지 않네요 안내해 주셔서 감사합니다",
                     },
                     {
-                        "word": "한강다리",
+                        "word": "한강 다리",
                         "meaning": "Han River bridge",
-                        "example": "한강다리는 건너는데 시간이 꽤 걸릴텐데 괜찮으신가요?",
+                        "example": "한강 다리는 건너는데 시간이 꽤 걸릴텐데 괜찮으신가요?",
                     },
                     {
                         "word": "이용객",
