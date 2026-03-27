@@ -64,6 +64,10 @@ class LearningOrchestrator:
         has_korean_media_experience: bool,
         location: str,
     ) -> dict:
+        """0~3 단계: 첫 정보 수집 + 장소 + 시나리오 + 페르소나 생성."""
+
+        # korean_level이 Literal["Beginner", "Intermediate", "Advanced"]로 타입 고정되면
+        # 아래 level_alias 변환 로직(6줄) 제거 가능
         level_alias = {
             "초급": "Beginner",
             "중급": "Intermediate",
@@ -101,7 +105,9 @@ class LearningOrchestrator:
     def get_session_state(self, session_id: str) -> dict:
         if session_id not in self.active_sessions:
             raise ValueError("session not found")
-        return self._serialize_session_state(session_id, self.active_sessions[session_id])
+        return self._serialize_session_state(
+            session_id, self.active_sessions[session_id]
+        )
 
     def select_role_and_opening(self, session_id: str, selected_role: str) -> dict:
         if session_id not in self.active_sessions:
@@ -229,9 +235,15 @@ class LearningOrchestrator:
             raise ValueError("user profile not found")
         sessions = repository.sessions_by_user.get(user_id, [])
         conversation_count = len(sessions)
-        average_score = round(
-            sum(session.total_score_10 for session in sessions) / conversation_count, 2
-        ) if conversation_count else 0.0
+        average_score = (
+            round(
+                sum(session.total_score_10 for session in sessions)
+                / conversation_count,
+                2,
+            )
+            if conversation_count
+            else 0.0
+        )
         return {
             "user_id": user_id,
             "conversation_count": conversation_count,

@@ -18,6 +18,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 import argparse
 import json
+import sys
 import time
 from datetime import datetime
 
@@ -29,6 +30,7 @@ _scenario_module = import_module("app.domain.conversation.prompts.scenario")
 build_system_prompt = _scenario_module.build_system_prompt
 build_user_message = _scenario_module.build_user_message
 clean_dialogue_functions = _scenario_module.clean_dialogue_functions
+VERSION = _scenario_module.VERSION
 
 RESULTS_DIR = Path(__file__).parent / "results"
 
@@ -113,7 +115,9 @@ def main() -> None:
 
     for run_number in range(args.runs):
         print(f"\n{'=' * 60}")
-        print(f"Run {run_number + 1}/{args.runs} | 장소: {args.location} | 수준: {args.level}")
+        print(
+            f"Run {run_number + 1}/{args.runs} | 장소: {args.location} | 수준: {args.level}"
+        )
         print("=" * 60)
 
         result = run_once(location=args.location, level=args.level)
