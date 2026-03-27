@@ -71,6 +71,8 @@ class LearningOrchestrator:
     ) -> dict:
         """0~3 단계: 첫 정보 수집 + 장소 + 시나리오 + 페르소나 생성."""
 
+        # korean_level이 Literal["Beginner", "Intermediate", "Advanced"]로 타입 고정되면
+        # 아래 level_alias 변환 로직(6줄) 제거 가능
         level_alias = {
             "초급": "Beginner",
             "중급": "Intermediate",

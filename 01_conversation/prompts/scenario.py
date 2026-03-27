@@ -9,7 +9,7 @@ import random
 import re
 from pathlib import Path
 
-VERSION = "education_based"
+VERSION = "education_based 3.0"
 
 # ================================================================
 # 데이터
@@ -27,35 +27,52 @@ LEVEL_MAP: dict[str, str] = {
 # 변환된 값(예: "1급")이 _USER_PROMPT_TEMPLATE의 {level} 자리에 주입된다.
 # LLM은 항상 "1급 / 3급 / 5급" 형태로 학습자 수준을 받는다.
 
-DIALOGUE_FUNCTIONS: dict[str, dict[str, list[str]]] = {
-    "1급": {
-        "요청자-조력자": ["장소 묻기", "물건 사기", "음식 주문하기", "시간 묻기"],
-        "각자 목표":     ["일상 묻기", "취향 묻기", "경험 묻기",
-                         "기분 묻기", "날씨/풍경 묻기", "어제/주말에 한 일 묻기"],
-        "자유 선택":    ["자기소개", "약속 정하기"],
-    },
-    "2급": {
-        "요청자-조력자": ["음식 주문하기", "물건 비교하기", "교환/환불 요청하기",
-                         "교통/길 찾기", "전화 통화하기", "허락 구하기", 
-                         "도움 요청하기", "거절하기"],
-        "각자 목표":     ["안부/근황 묻기", "외모/성격 묘사하기", 
-                         "가족/고향 소개하기", "여행 계획 말하기"],
-        "자유 선택":    ["감정 표현하기", "건강 상태 설명하기", 
-                        "모임 제안하기", "미래 계획 말하기"],
-    },
+DIALOGUE_FUNCTIONS: dict[str, list[str]] = {
+    "1급": [
+        "장소 묻기",
+        "물건 사기",
+        "음식 주문하기",
+        "시간 묻기",
+        "일상 묻기",
+        "취향 묻기",
+        "경험 묻기",
+        "기분 묻기",
+        "날씨/풍경 묻기",
+        "어제/주말에 한 일 묻기",
+        "자기소개",
+        "약속 정하기",
+    ],
+    "2급": [
+        "음식 주문하기",
+        "물건 비교하기",
+        "교환/환불 요청하기",
+        "교통/길 찾기",
+        "전화 통화하기",
+        "허락 구하기",
+        "도움 요청하기",
+        "거절하기",
+        "안부/근황 묻기",
+        "외모/성격 묘사하기",
+        "가족/고향 소개하기",
+        "여행 계획 말하기",
+        "감정 표현하기",
+        "건강 상태 설명하기",
+        "모임 제안하기",
+        "미래 계획 말하기",
+    ],
 }
 # 한국어 표준 교육과정에 기반한 교재들의 급수별 말하기 목표를 종합한 것으로,
 # 페르소나 mission을 교육적 근거 위에서 생성하기 위한 비계(scaffolding) 역할을 한다.
-# 카테고리(요청자-조력자 / 각자 목표 / 자유 선택)는 A·B 간 mission을 자연스럽게
-# 분배하기 위한 분류 기준이며, dialogue_function 자체는 최종 JSON에 포함되지만
-# mission을 이끌어내기 위한 중간 장치로 설계되었다.
-
-# build_user_message() 호출 시 급수를 키로 카테고리별 목록을 포맷팅해 주입한다.
-# → {dialogue_functions} 자리에 "[카테고리] 기능1 | 기능2 | ..." 형태로 렌더링된다.
-# → LLM이 [] 태그를 보고 mission 구조를 직접 판단하므로 시스템 프롬프트에서 목록 중복 불필요.
+# A·B mission 구조는 카테고리 태그 없이 프롬프트 원칙("같은 화제에서 각자 능동적 목표")으로 제어한다.
+#
+# build_user_message() 호출 시 급수를 키로 목록을 " | " 구분으로 포맷팅해 {dialogue_functions}에 주입한다.
+# LLM은 활동 1개 → 이 목록에서 dialogue_function 1개를 선택한다.
+#
+# TODO: "3급"(Intermediate), "5급"(Advanced) 데이터 추가 필요.
+#       현재 미정의 급수는 "1급" 데이터로 폴백됨 — build_user_message() 참고.
 
 _RELATIONSHIP_TYPES = ["친구", "선배-후배", "연인", "선생님-학생", "낯선 사람"]
-# MVP 대표 페르소나(20대 유학생)가 친밀도·위계에 따른 
+# MVP 대표 페르소나(20대 유학생)가 친밀도·위계에 따른
 # 적절한 한국어 표현을 학습할 수 있도록 대화 참여자 간 관계를 다섯 가지로 설정했다.
 # 동등(친구·연인) / 수직(선배-후배·선생님-학생) / 초면(낯선 사람)의 스펙트럼을 커버한다.
 
@@ -65,55 +82,100 @@ _RELATIONSHIP_TYPES = ["친구", "선배-후배", "연인", "선생님-학생", 
 
 PERSONA_VOCAB: dict[str, list[str]] = {
     "1급": [
-        "회사원", "의사", "가수", "영화배우",
-        "아주머니", "아저씨", "할머니", "할아버지",
-        "가게 주인", "식당 주인", "카페 주인", "서점 주인",
-        "편의점 주인", "편의점 직원", "백화점 직원",
-        "은행 직원", "호텔 직원", "병원 직원", "배달 기사",
+        "회사원",
+        "의사",
+        "가수",
+        "영화배우",
+        "아주머니",
+        "아저씨",
+        "할머니",
+        "할아버지",
+        "가게 주인",
+        "식당 주인",
+        "카페 주인",
+        "서점 주인",
+        "편의점 주인",
+        "편의점 직원",
+        "백화점 직원",
+        "은행 직원",
+        "호텔 직원",
+        "병원 직원",
+        "배달 기사",
     ],
 }
 # 관계 유형이 "낯선 사람"일 때 B 페르소나의 직업·신분 어휘로 사용.
 # 낯선 사람 외 관계에는 주입하지 않는다.
-# vocabulary.json에 직업명이 미포함되어 있으므로 별도 관리. 
+# vocabulary.json에 직업명이 미포함되어 있으므로 별도 관리.
 # 2급 어휘는 추후 추가 예정.
 #
-# [설계 방향] 장소 한정 역할(따릉이 대여소 직원, 한강 관리소 직원 등)은
+# [설계 방향] 장소 한정 역할( 한강 관리소 직원 등)은
 # 이 목록에 추가하지 않고 location_vocab 단에서 다룬다.
 # → 일반 직업(배달 기사, 회사원 등)만 여기서 관리.
 
 _ACTIVITIES: dict[str, dict[str, list[str]]] = {
     "한강": {
         "구매/주문": [
-            "편의점에서 간식 사기", "카페에서 주문하기",
-            "배달 음식 주문하기", "피크닉 용품(텐트·테이블·돗자리) 빌리기", "푸드트럭에서 음식 고르기",
+            "편의점에서 간식 사기",
+            "카페에서 주문하기",
+            "배달 음식 주문하기",
+            "피크닉 용품(텐트·테이블·돗자리) 빌리기",
+            "푸드트럭에서 음식 고르기",
         ],
         "시설 이용/위치": [
-            "가까운 화장실 찾기", "지하철역 가는 길 묻기", "편의점 찾기", "카페 찾기",
-            "쓰레기통 찾기", "자전거 도로 위치 묻기", "한강 공원 안내소 찾기",
-            "배달 존 찾기", "오리배 타는 곳 묻기", "따릉이 빌리는 곳 찾기",
+            "가까운 화장실 찾기",
+            "지하철역 가는 길 묻기",
+            "편의점 찾기",
+            "카페 찾기",
+            "쓰레기통 찾기",
+            "한강 공원 안내소 찾기",
+            "음식 배달 존 찾기",
+            "오리배 타는 곳 묻기",
+            "따릉이 빌리는 곳 찾기",
+            "자전거 도로 묻기",
+            "인라인 스케이트 타는 곳 묻기",
             "한강에서 보이는 건물이 뭔지 묻기",
         ],
         "시간/계획": [
-            "반포 분수 쇼 시작 시간 확인하기", "친구와 만날 장소 정하기",
-            "수영장 운영 시간 묻기", "음식 메뉴 고르기",
-            "버스·지하철 막차 시간 확인하기", "불꽃축제 일정 물어보기", "한강 유람선 타는 시간 묻기"
+            "무지개 분수가 켜지는 시간 확인하기",
+            "친구와 만날 장소 정하기",
+            "수영장 운영 시간 묻기",
+            "음식 메뉴 고르기",
+            "버스·지하철 막차 시간 확인하기",
+            "불꽃축제 일정 물어보기",
+            "한강 유람선 타는 시간 묻기",
         ],
         "경험/일상": [
-            "오늘 기분이 어떤지 이야기하기", "좋아하는 노래 같이 듣기",
-            "러닝 크루에서 자기소개하기", "한강에 자주 오는지 묻기",
-            "어떤 운동을 즐기는지 묻기", "처음 한강에 온 경험 이야기하기",
-            "한강에서 라면 먹어 본 경험 묻기", "어학당 소풍에서 자기소개하기",
+            "오늘 기분이 어떤지 이야기하기",
+            "좋아하는 노래 같이 듣기",
+            "러닝 크루에서 자기소개하기",
+            "한강에 자주 오는지 묻기",
+            "어떤 운동을 즐기는지 묻기",
+            "처음 한강에 온 경험 이야기하기",
+            "한국 생활 이야기하기",
+            "한강에서 라면 먹어 본 경험 묻기",
+            "어학당 소풍에서 자기소개하기",
         ],
         "감상/휴식": [
-            "반포 무지개 분수 구경하기", "노을 사진 찍기",
-            "돗자리 펴고 쉬기", "야경 감상하기", "산책하기",
-            "강바람 맞으며 오늘 하루 이야기하기", "한강 불꽃놀이 이야기하기",
-            "버스킹 공연 구경하기", "새 관찰하기", 
+            "벚꽃 구경하기",
+            "노을 사진 찍기",
+            "돗자리 펴고 쉬기",
+            "야경 감상하기",
+            "산책하기",
+            "한강 불꽃놀이 이야기하기",
+            "버스킹 공연 구경하기",
+            "새 관찰하기",
         ],
-        "스포츠/활동": [
-            "배드민턴 같이 치기", "러닝 코스 추천받기",
-            "인라인 스케이트 타는 법 묻기", "한강 수영장 이용 방법 묻기",
-            "오리배 타는 방법 묻기", "따릉이 타기",
+        "제안/약속": [
+            "한강에서 같이 라면 먹자고 약속하기",
+            "다음에 치킨 배달시키자고 제안하기",
+            "푸드트럭에서 음식 사자고 말하기",
+            "다음에 같이 따릉이 타자고 약속하기",
+            "저녁에 한강 산책하자고 제안하기",
+            "다음에 같이 배드민턴 치자고 약속하기",
+            "반포 무지개 분수 보러 가자고 약속하기",
+            "다음에 야경 보러 오자고 제안하기",
+            "벚꽃 피면 다시 오자고 약속하기",
+            "망원 시장 가 보자고 약속하기"
         ],
     },
 }
@@ -136,21 +198,36 @@ _ACTIVITIES: dict[str, dict[str, list[str]]] = {
 #
 # [주입 방식]
 #   build_user_message() 호출 시 카테고리별 n개씩 샘플링해 {activities}에 주입.
-#   → 5개 카테고리 × 2개 = 매 호출마다 10개의 균형 잡힌 서브셋 제공.
+#   → 6개 카테고리 × 2개 = 매 호출마다 12개의 균형 잡힌 서브셋 제공.
 #   편중 제어는 카테고리별 샘플링(_get_activities)으로 대응한다.
 
 
 _LOCATION_VOCAB: dict[str, dict[str, list[str]]] = {
     "한강": {
         "시설명": [
-            "반포 무지개 분수", "따릉이 대여소", "오리배 선착장", "한강 유람선",
-            "한강 수영장", "바비큐 구역", "피크닉 용품 대여소", "서울 달",
-            "푸드트럭 거리", "자전거 도로", "산책로", "63빌딩", "국회의사당", "여의도 공원"
+            "반포 무지개 분수",
+            "자전거 대여소",
+            "오리배 대여소"
+            "한강 유람선",
+            "한강 수영장",
+            "바비큐 구역",
+            "피크닉 용품 대여소",
+            "서울 달",
+            "푸드트럭 거리",
+            "자전거 도로",
+            "산책로",
+            "63빌딩",
+            "국회의사당",
+            "여의도 공원",
         ],
         "역할": [
-            "따릉이 대여소 직원", "오리배 선착장 직원", "유람선 안내원",
-            "피크닉 용품 대여소 직원", "한강공원 안내소 직원",
-            "수영장 안내원", "푸드트럭 사장님",
+            "한강 관리소 직원",
+            "오리배 대여소 직원",
+            "유람선 안내원",
+            "피크닉 용품 대여소 직원",
+            "한강공원 안내소 직원",
+            "수영장 안내원",
+            "푸드트럭 사장",
         ],
     },
 }
@@ -167,8 +244,8 @@ _LOCATION_VOCAB: dict[str, dict[str, list[str]]] = {
 #
 # [주입 방식]
 #   build_user_message()에서 카테고리별로 레이블을 붙여 참고 어휘 섹션에 주입.
-#   예) "장소 시설명: 반포 무지개 분수, 따릉이 대여소, ..."
-#       "장소 한정 역할: 따릉이 대여소 직원, 오리배 선착장 직원, ..."
+#   예) "장소 시설명: 반포 무지개 분수,  ..."
+#       "장소 한정 역할:  오리배 대여소 직원, ..."
 #
 # [역할 분리 기준]
 #   _ACTIVITIES               → 일반 + 장소 특화 활동을 섞은 가드레일 (행위 수준, 샘플링 주입)
@@ -244,20 +321,19 @@ def _get_general_vocab(level_str: str, kinds: list[str] | None = None) -> str:
     """
     if kinds is None:
         kinds = ["동사", "형용사"]
-    prefix = level_str.replace("급", "_")   # "1급" → "1_", "3급" → "3_"
+    prefix = level_str.replace("급", "_")  # "1급" → "1_", "3급" → "3_"
     vocab = _load_vocab()
     grouped: dict[str, list[str]] = {k: [] for k in kinds}
     for entry in vocab:
         if not entry["index"].startswith(prefix):
-            continue                         # 급수 불일치 → 건너뜀
-        kind = entry["kind"].strip()         # 공백 오염 정규화
+            continue  # 급수 불일치 → 건너뜀
+        kind = entry["kind"].strip()  # 공백 오염 정규화
         if kind in grouped:
             grouped[kind].append(entry["word"])
     # words가 빈 리스트인 품사는 출력에서 제외 (if words)
     header = "일반 어휘 (mission·scenario_description 작성 시 어울리는 단어를 골라 사용할 것)"
     lines = [f"{k}: {', '.join(words)}" for k, words in grouped.items() if words]
     return header + "\n" + "\n".join(lines)
-
 
 
 # ================================================================
@@ -283,7 +359,7 @@ def _get_general_vocab(level_str: str, kinds: list[str] | None = None) -> str:
 
 SYSTEM_PROMPT = """
 ## Role
-너는 학습자의 한국어 수준에 맞춘 대화 시나리오 설계자다.
+너는 한국 일상 대화 시나리오 설계자다.
 장소와 관계 유형을 입력받아 아래 제약을 지키며 JSON을 생성한다.
 
 ## Constraints
@@ -302,18 +378,13 @@ SYSTEM_PROMPT = """
 ### ③ mission
   - A·B 각 persona가 이 대화를 통해 달성하고 싶은 목표 (30자 이내)
   - 음식·물건이 포함되는 경우 구체적인 이름을 쓸 것 (예: 간식 → 떡볶이, 음료 → 아메리카노)
-  - mission 구조는 {dialogue_functions}의 [] 태그를 따른다.
-    카테고리는 [요청자-조력자] / [각자 목표] / [자유 선택] 세 가지다.
-    [요청자-조력자] → A는 요청자, B는 조력자
-      Example) A mission: "화장실이 어디에 있는지 알고 싶어요." / B mission: "화장실 위치를 알려 주고 싶어요."
-    [각자 목표] → A·B 각자 궁금한 것을 mission으로
-      mission은 "상대방에 대해 알고 싶은 것"으로 작성하되,
-      지금 함께하는 활동이나 {location} 상황이 대화의 계기가 될 것
-      Example) A mission: "상대방이 한강에서 자전거 타기를 좋아하는지 알고 싶어요."
-               B mission: "상대방이 좋아하는 한강 간식이 궁금해요."
-      Counter-example) "상대방의 주말 일과가 궁금해요." — {location} 상황과 무관한 일상 질문
-    [자유 선택] → 상황에 맞게 선택
-    [예외] 낯선 사람 관계 → dialogue_function에 관계없이 항상 요청자-조력자 구조
+  - A와 B는 같은 화제에서 각자 능동적인 목표를 가진다.
+    "왜 지금 이 장소/활동에서 이 목표가 생겼는가"가 설명 가능해야 한다.
+    Example) A mission: "상대방이 버스킹 공연을 자주 보러 오는지 알고 싶어요."
+             B mission: "상대방이 좋아하는 음악 장르가 있는지 궁금해요."
+  - 단, 낯선 사람 → A는 정보 요청자, B는 조력자 (비대칭 구조)
+    Example) A mission: "화장실이 어디에 있는지 알고 싶어요."
+             B mission: "화장실 위치를 알려 주고 싶어요."
 
   - Counter-example) "친구와 만나기로 했어요." (완료된 상황 금지)
                      "오늘 저녁에 한강에서 함께 달리기 할래요?" (대화에 활용할 첫 문장 금지)
@@ -332,14 +403,14 @@ SYSTEM_PROMPT = """
 
 ### ⑤ expression
   - 어휘와 문법은 유저 프롬프트에서 주어진 학습자 수준에 맞게 작성
-  - 단, 장소명·시설명·고유명사(따릉이, 반포 무지개 분수 등)는 수준과 무관하게 자유롭게 사용 가능
+  - 단, 장소명·시설명·고유명사는 수준과 무관하게 자유롭게 사용 가능
   - 유저 프롬프트의 ## 참고 어휘를 mission·scenario_description 작성 시 적극 반영
 
 ### ⑥ dialogue_function
-  - 배열 각 항목은 기능명만 포함할 것
-  - 카테고리 태그([요청자-조력자] 등)나 카테고리명 자체를 항목 값으로 쓰는 것은 금지
-  - Example) ["장소 묻기", "취향 묻기"]
-  - Counter-example) ["[각자 목표] 취향 묻기"], ["각자 목표"]
+  - 1개만 포함할 것
+  - 배열 항목은 기능명만 포함할 것
+  - Example) ["취향 묻기"]
+  - Counter-example) ["취향 묻기", "기분 묻기"]
 
 ## Output Schema
 
@@ -371,7 +442,7 @@ Field descriptions:
 """
 
 _USER_PROMPT_TEMPLATE = """
-학습자 수준: {level}
+학습자 수준: 한국어 표준 교육과정 {level}
 장소: {location}
 관계 유형: {relationship_type}
 
@@ -381,11 +452,11 @@ _USER_PROMPT_TEMPLATE = """
    - 활동 풀: {activities}
    - dialogue_function 풀: {dialogue_functions}
 
-1. [활동 선택] {relationship_type}과 가장 자연스러운 활동 선택
-   낯선 사람 → 반드시 1개만 선택 | 나머지 → 1~2개 선택
+1. [활동 선택] {relationship_type}과 가장 자연스러운 활동 1개 선택
    Note) 활동 풀 전체를 고르게 참고할 것.
 
-2. [dialogue_function 확정] 선택한 활동에 가장 자연스럽게 연결되는 dialogue_function을 dialogue_function 풀에서 확정
+2. [dialogue_function 확정] 선택한 활동에 가장 자연스럽게 연결되는 dialogue_function 1개를 dialogue_function 풀에서 확정
+   낯선 사람 → 정보 요청 성격의 기능(장소 묻기, 시간 묻기 등) 우선 선택
 
 3. [personas 설정] (## Constraints ① role 규칙 준수)
 
@@ -396,7 +467,7 @@ _USER_PROMPT_TEMPLATE = """
 6. JSON 출력 — 시스템 프롬프트의 출력 스키마를 따를 것
 
 ## 예시
-예시 1 - 입력: 장소=백화점, 관계 유형=낯선 사람 → [요청자-조력자] + 외국인 이름 A
+예시 1 - 입력: 장소=백화점, 관계 유형=낯선 사람 + 외국인 이름 A
 {{ "scenario_title": "백화점에서 화장실을 찾는 대학생",
   "scenario_description": "백화점에서 처음 만난 두 사람의 대화입니다. 리사는 화장실이 어디에 있는지 알고 싶고, 영은은 위치를 알려 주고 싶어합니다.",
   "location": "백화점",
@@ -407,14 +478,14 @@ _USER_PROMPT_TEMPLATE = """
   }}
 }}
 
-예시 2 - 입력: 장소=카페, 관계 유형=연인 → [각자 목표] + 외국인 이름 B
-{{ "scenario_title": "카페에서 취향을 나누는 연인",
-  "scenario_description": "카페에서 만난 연인 관계인 두 사람의 대화입니다. 현아는 제이크가 아메리카노를 좋아하는지 알고 싶고, 제이크는 현아의 오늘 기분이 궁금합니다.",
+예시 2 - 입력: 장소=카페, 관계 유형=연인 + 외국인 이름 B
+{{ "scenario_title": "카페에서 음료 취향을 나누는 연인",
+  "scenario_description": "카페에서 만난 연인 관계인 두 사람의 대화입니다. 현아는 제이크가 아메리카노를 좋아하는지 알고 싶고, 제이크는 현아가 어떤 음료를 즐기는지 궁금합니다.",
   "location": "카페",
-  "dialogue_function": ["취향 묻기", "기분 묻기"], "relationship_type": "연인",
+  "dialogue_function": ["취향 묻기"], "relationship_type": "연인",
   "personas": {{
     "A": {{ "name": "현아", "age": "23", "gender": "여", "role": "여자 친구", "mission": "남자 친구가 아메리카노를 좋아하는지 알고 싶어요." }},
-    "B": {{ "name": "제이크", "age": "24", "gender": "남", "role": "남자 친구", "mission": "여자 친구의 오늘 기분을 알고 싶어요." }}
+    "B": {{ "name": "제이크", "age": "24", "gender": "남", "role": "남자 친구", "mission": "여자 친구가 어떤 음료를 즐기는지 궁금해요." }}
   }}
 }}
 
@@ -424,90 +495,12 @@ _USER_PROMPT_TEMPLATE = """
 {general_vocab}
 """
 
-# LEVEL_MAP: 서비스 레벨(3단계) → 한국어 급수 진입점 매핑
-#
-# 서비스는 Beginner / Intermediate / Advanced 3단계로 구성되며,
-# 각 단계 안에서 사용자 진행도에 따라 세부 티어(급수)가 올라간다.
-#
-#   Beginner    → 1급(진입) ~ 2급(숙달)
-#   Intermediate → 3급(진입) ~ 4급(숙달)
-#   Advanced    → 5급(진입) ~ 6급(숙달)
-#
-# 이 맵은 각 서비스 레벨의 진입 급수를 가리킨다.
-# 세부 티어 로직은 추후 사용자 진행도 시스템과 연동 예정.
-LEVEL_MAP: dict[str, str] = {
-    "Beginner": "1급",
-    "Intermediate": "3급",
-    "Advanced": "5급",
-}
 
-# 한국어 표준 교육과정에 기반한 교재들의 급수별 말하기 목표를 종합한 것으로,
-# 페르소나 mission을 교육적 근거 위에서 생성하기 위한 비계(scaffolding) 역할을 한다.
-# 카테고리(요청자-조력자 / 각자 목표 / 자유 선택)는 A·B 간 mission을 자연스럽게
-# 분배하기 위한 분류 기준이다.
-# build_user_message() 호출 시 급수를 키로 카테고리별 목록을 포맷팅해 주입한다.
-# → {dialogue_functions} 자리에 "[카테고리] 기능1 | 기능2 | ..." 형태로 렌더링된다.
-DIALOGUE_FUNCTIONS: dict[str, dict[str, list[str]]] = {
-    "1급": {
-        "요청자-조력자": ["장소 묻기", "물건 사기", "음식 주문하기", "시간 묻기"],
-        "각자 목표": [
-            "일상 묻기",
-            "취향 묻기",
-            "경험 묻기",
-            "기분 묻기",
-            "날씨/풍경 묻기",
-            "어제/주말에 한 일 묻기",
-        ],
-        "자유 선택": ["자기소개", "약속 정하기"],
-    },
-    "2급": {
-        "요청자-조력자": [
-            "음식 주문하기",
-            "물건 비교하기",
-            "교환/환불 요청하기",
-            "교통/길 찾기",
-            "전화 통화하기",
-            "허락 구하기",
-            "도움 요청하기",
-            "거절하기",
-        ],
-        "각자 목표": [
-            "안부/근황 묻기",
-            "외모/성격 묘사하기",
-            "가족/고향 소개하기",
-            "여행 계획 말하기",
-        ],
-        "자유 선택": [
-            "감정 표현하기",
-            "건강 상태 설명하기",
-            "모임 제안하기",
-            "미래 계획 말하기",
-        ],
-    },
-}
-
-# 지원하는 관계 유형 목록. build_user_message 호출 시 랜덤으로 하나 선택된다.
-# MVP 대표 페르소나(20대 유학생)가 친밀도·위계에 따른 적절한 한국어 표현을 학습할 수 있도록
-# 동등(친구·연인) / 수직(선배-후배·선생님-학생) / 초면(낯선 사람)의 스펙트럼을 커버한다.
-RELATIONSHIP_TYPES = ["친구", "선배-후배", "연인", "선생님-학생", "낯선 사람"]
 # ----------------------------------------------------------------
-# [왜 이 함수가 필요한가?]
-#
-# build_user_message()는 LLM에게 대화 기능 목록을 다음 형태로 주입한다:
-#   "[요청자-조력자] 장소 묻기 | 물건 사기 | ..."
-#   "[각자 목표] 취향 묻기 | 경험 묻기 | ..."
-#
-# [] 태그는 LLM이 mission 구조(요청자-조력자인지, 각자 목표인지)를 판단하기 위한
-# '힌트'로 설계된 것이고, 최종 JSON 출력의 dialogue_function 배열에는
-# 기능명만("취향 묻기") 담겨야 한다.
-#
-# 그런데 LLM이 이 태그를 그대로 출력에 포함시키는 오류가 발생한다:
-#   실패 유형 1: ["[각자 목표] 취향 묻기"]  ← 태그가 값 앞에 붙어 나옴
-#   실패 유형 2: ["각자 목표"]              ← 기능명 대신 카테고리명 자체가 들어옴
-#
-# 시스템 프롬프트에 ⑤ 제약을 추가해 1차 방어를 하지만,
-# LLM은 확률적으로 제약을 어기는 경우가 있으므로
-# 이 함수로 2차(후처리) 방어를 한다.
+# dialogue_function JSON 출력에서 카테고리 태그를 제거하는 클렌징 함수.
+# LLM이 태그를 잘못 포함시키는 두 가지 실패 패턴을 후처리로 방어한다.
+#   실패 유형 1: ["[각자 목표] 취향 묻기"]  → "취향 묻기"
+#   실패 유형 2: ["각자 목표"]              → "" (호출부에서 if f 로 필터 필요)
 #
 # [정규식 설명]
 #   r"^\[.*?\]\s*"
@@ -527,6 +520,7 @@ def clean_dialogue_functions(items: list[str]) -> list[str]:
         "각자 목표"             → "" (빈 문자열 → 호출부에서 if f 필터 필요)
     """
     return [re.sub(r"^\[.*?\]\s*", "", item).strip() for item in items]
+
 
 def _get_activities(location: str, n_per_category: int = 2) -> str:
     """_ACTIVITIES에서 location에 해당하는 카테고리별 활동을 샘플링해 반환한다.
@@ -557,7 +551,7 @@ def _get_persona_vocab(level_str: str, location: str) -> list[str]:
     Returns:
         일반 직업(PERSONA_VOCAB) + 장소 한정 직함(_LOCATION_VOCAB["역할"])이
         합산된 단일 리스트.
-        예) ["회사원", "의사", ..., "따릉이 대여소 직원", "오리배 선착장 직원", ...]
+        예) ["회사원", "의사", ...,  "오리배 대여소 직원"..]
 
     [왜 이 함수가 필요한가?]
         기존에는 build_user_message()가 PERSONA_VOCAB만 직접 참조했다.
@@ -587,19 +581,29 @@ def build_system_prompt() -> str:
     return SYSTEM_PROMPT
 
 
-def build_user_message(location: str, level: str = "Beginner") -> str:
+def build_user_message(
+    level: str = "Beginner",
+    location: str = "한강",
+    relationship_type: str | None = None,
+) -> str:
     level_str = LEVEL_MAP.get(level, "1급")
-    relationship_type = random.choice(_RELATIONSHIP_TYPES)
-    funcs = DIALOGUE_FUNCTIONS.get(level_str, DIALOGUE_FUNCTIONS["1급"])
-    # DIALOGUE_FUNCTIONS[level_str]의 카테고리별 항목을
-    # "[카테고리] 기능1 | 기능2 | ..." 형태로 조합해 {dialogue_functions}에 주입
-    dialogue_functions = "\n   ".join(
-        f"[{category}] {' | '.join(items)}" for category, items in funcs.items()
+    relationship_type = (
+        relationship_type
+        if relationship_type in _RELATIONSHIP_TYPES
+        else random.choice(_RELATIONSHIP_TYPES)
     )
+    funcs = DIALOGUE_FUNCTIONS.get(level_str, DIALOGUE_FUNCTIONS["1급"])
+    # TODO: "3급"·"5급" 데이터 추가 후 폴백 제거 — DIALOGUE_FUNCTIONS 주석 참고.
+    # DIALOGUE_FUNCTIONS[level_str] 목록을 " | " 구분으로 포맷팅해 {dialogue_functions}에 주입
+    dialogue_functions = " | ".join(funcs)
     activities = _get_activities(location)
     if relationship_type == "낯선 사람":
         vocab_list = _get_persona_vocab(level_str, location)
-        persona_vocab = "인물 (낯선 사람 B 전용 — B의 role 선택 시 이 목록에서 고를 것): " + ", ".join(vocab_list) + "\n"
+        persona_vocab = (
+            "인물 (낯선 사람 B 전용 — B의 role 선택 시 이 목록에서 고를 것): "
+            + ", ".join(vocab_list)
+            + "\n"
+        )
     else:
         persona_vocab = ""
     loc_vocab = _LOCATION_VOCAB.get(location, {})
@@ -607,8 +611,18 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
     # "역할"은 _get_persona_vocab()을 통해 persona_vocab으로만 주입.
     # → 낯선 사람 아닌 관계에서는 역할 어휘가 노출되지 않음.
     # → 낯선 사람일 때도 location_vocab·persona_vocab 이중 주입 없음.
-    location_vocab = ("장소 시설명 (mission·scenario_description 작성 시 활용): " + ", ".join(facilities) + "\n") if facilities else ""
+    location_vocab = (
+        (
+            "장소 시설명 (mission·scenario_description 작성 시 활용): "
+            + ", ".join(facilities)
+            + "\n"
+        )
+        if facilities
+        else ""
+    )
     general_vocab = _get_general_vocab(level_str)
+    # _USER_PROMPT_TEMPLATE 안의 {level}, {location}, {relationship_type} 등
+    # 모든 {} 자리에 .format()으로 한꺼번에 값을 주입해 완성된 유저 프롬프트를 반환한다.
     return _USER_PROMPT_TEMPLATE.format(
         level=level_str,
         location=location,
@@ -635,7 +649,7 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 # _RELATIONSHIP  _ACTIVITIES  DIALOGUE_   _LOCATION_    _get_general_
 # _TYPES에서     [location]   FUNCTIONS   VOCAB         vocab(level)
 # random.choice  [category]   [level]     [location]    vocabulary.json
-# → relationship 카테고리당   카테고리별  ["시설명"]    에서 급수·품사(동사, 형용사)
+# → relationship 카테고리당   " | " 구분  ["시설명"]    에서 급수·품사(동사, 형용사)
 #   _type        2개 샘플링   포맷팅      만 전체 주입  필터 후 전체 주입
 #                → activities → dialogue  → location    → general_vocab
 #                              _functions   _vocab
@@ -657,12 +671,13 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 #                   0. 입력 확인 — relationship_type·활동 풀·
 #                      dialogue_function 풀 전체를 확정
 #                   1. 활동 선택 (활동 풀에서)
-#                      → 낯선 사람: 1개 / 나머지: 1~2개
+#                      → 1개 선택
 #                   2. 활동 → dialogue_function 매핑
 #                      (dialogue_function 풀에서 선택)
 #                   3. personas 설정 (role·age 제약 준수)
 #                   4. mission 생성
-#                      (dialogue_function 카테고리 구조 따름,
+#                      (같은 화제, A·B 각자 능동적 목표
+#                       낯선 사람은 요청자-조력자 비대칭
 #                       음식·물건은 구체적 이름 사용)
 #                   5. scenario_description 생성
 #                   6. JSON 출력
@@ -673,8 +688,8 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 #
 # [코드가 처리]
 # - 관계 유형: random.choice → {relationship_type} 주입
-# - 학습자 수준: LEVEL_MAP으로 변환 → {level} 주입
-# - 대화 기능 목록: DIALOGUE_FUNCTIONS[급수] 카테고리별 포맷팅 → {dialogue_functions} 주입
+# - 학습자 수준: LEVEL_MAP으로 변환 → "한국어 표준 교육과정 {level}" 형태로 주입
+# - 대화 기능 목록: DIALOGUE_FUNCTIONS[급수] flat list " | " 구분 포맷팅 → {dialogue_functions} 주입
 # - 장소 활동 목록: _ACTIVITIES[location] 카테고리별 2개 샘플링 → {activities} 주입
 # - 인물 어휘: _get_persona_vocab(level, location) — 일반 직업 + 장소 역할 합산
 #              → "낯선 사람"일 때만 {persona_vocab} 주입
@@ -696,8 +711,8 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 # ================================================================
 #
 # [0] _LOCATION_VOCAB에 해당하는 어휘에 대한 topic_description 추가
-#   현재: 시설명,역할만 존재 
-#   to-do: 각 어휘에 대해 사용자가 이해할 수 있도록 간략한 정보 추가 
+#   현재: 시설명, 역할만 존재
+#   to-do: 각 어휘에 대해 사용자가 이해할 수 있도록 간략한 정보 추가(튜플로 묶어볼 생각)
 #
 # [2] 장소 확장
 #   현재: _ACTIVITIES·_LOCATION_VOCAB 모두 한강만 존재
@@ -708,8 +723,8 @@ def build_user_message(location: str, level: str = "Beginner") -> str:
 #   to-do: 2급 이상 급수별 직업·신분 어휘 큐레이션 추가
 #
 # [4] DIALOGUE_FUNCTIONS 3급 이상 확장
-#   현재: 1·2급 수동 분류 완료
-#   to-do: 3급 이상 추가 시 동일하게 카테고리(요청자-조력자/각자 목표/자유 선택) 수동 분류 필요
+#   현재: 1·2급 flat list 완료 (3급·5급 폴백 TODO 주석 추가됨)
+#   to-do: 3급 이상 급수별 대화 기능 목록 큐레이션 추가
 #
 # [5] 데이터 외부화
 #   현재: _ACTIVITIES·_LOCATION_VOCAB·PERSONA_VOCAB 모두 Python dict 하드코딩

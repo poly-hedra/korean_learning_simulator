@@ -2,33 +2,40 @@
 
 결과는 tests/results/ 에 JSON으로 저장된다.
 
-실행:
-    python tests/test_generate_scenario.py
-    python tests/test_generate_scenario.py --location 명동 --runs 3
-    python tests/test_generate_scenario.py --location 편의점 --runs 5
-"""
+실행 (프로젝트 루트 korean_learning_simulator/ 에서):
+    python -m tests.test_generate_scenario
+    python -m tests.test_generate_scenario --location 명동 --runs 3
+    python -m tests.test_generate_scenario --location 편의점 --runs 5
 
-# `python tests/test_generate_scenario.py` 로 실행 시 Python이 스크립트 위치(tests/)를
-# sys.path에 추가하기 때문에 상위 패키지(services 등)를 찾지 못한다.
-# 아래 코드는 프로젝트 루트(korean_learning_simulator/)를 sys.path에 강제 추가한다.
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+-m 플래그를 쓰는 이유:
+    Python 인터프리터는 -m 실행 시 현재 디렉토리를 sys.path에 자동으로 추가한다.
+    `python tests/test_xxx.py` 로 실행하면 tests/ 기준으로 패키지를 찾아서
+    상위 패키지(services 등)를 못 찾는다. -m 을 쓰면 이 문제가 없다.
+"""
 
 import argparse
 import json
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
 from services.llm_service import llm_service
-from importlib import import_module
 
-_scenario_module = import_module("01_conversation.prompts.scenario")
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+# 동적 임포트를 함수로 이동
+def load_scenario_module():
+    from importlib import import_module
+    _scenario_module = import_module("01_conversation.prompts.scenario")
+    return _scenario_module
+
+# 모듈 로드 및 전역 변수 할당
+_scenario_module = load_scenario_module()
 build_system_prompt = _scenario_module.build_system_prompt
 build_user_message = _scenario_module.build_user_message
 clean_dialogue_functions = _scenario_module.clean_dialogue_functions
+VERSION = _scenario_module.VERSION
 
 RESULTS_DIR = Path(__file__).parent / "results"
 

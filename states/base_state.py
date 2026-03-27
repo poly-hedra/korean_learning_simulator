@@ -15,7 +15,7 @@ class UserProfile(TypedDict):
 
     user_id: str
     country: str
-    korean_level: str
+    korean_level: str  # TODO: Literal["Beginner", "Intermediate", "Advanced"] 로 고정 필요
     has_korean_media_experience: bool
     selected_role: str
 
