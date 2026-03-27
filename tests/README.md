@@ -1,19 +1,12 @@
 # tests/
 
-시나리오 생성 품질 검증 스크립트 모음.
+`pytest` 기반 자동 테스트 코드 위치.
 
----
+## 원칙
 
-## 파일 구조
-
-```
-tests/
-├── test_generate_scenario.py   # 시나리오 생성 테스트 (메인)
-├── parse_scenario_results.py   # 결과 JSON → CSV 변환
-└── results/                    # 실행 결과 JSON/CSV 저장 위치 (gitignore)
-```
-
----
+- `tests/`에는 자동 검증용 테스트 코드만 둔다.
+- 수동 실행 스크립트는 `scripts/`로 분리한다.
+- 테스트는 현재 구현된 비즈니스 로직 동작을 고정하는 데 집중한다.
 
 ## 실행 방법
 

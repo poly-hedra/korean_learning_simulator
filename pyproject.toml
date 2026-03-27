@@ -10,3 +10,12 @@ dependencies = [
     "kiwipiepy>=0.23.0",
     "langgraph>=1.1.2",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<9",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
