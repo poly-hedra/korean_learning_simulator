@@ -27,3 +27,6 @@ data/
 
 # 테스트 결과물 (로컬 전용)
 tests/results/
+
+# 개인 확인용
+CHECK.md
