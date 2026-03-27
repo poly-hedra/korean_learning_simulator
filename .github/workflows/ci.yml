@@ -45,7 +45,7 @@ jobs:
           version: "latest"
 
       - name: Install dependencies
-        run: uv sync --extra dev
+        run: uv sync --group dev
 
       - name: Run Ruff (lint)
         run: uv run ruff check app/ tests/ --output-format=github
@@ -68,7 +68,7 @@ jobs:
           version: "latest"
 
       - name: Install dependencies
-        run: uv sync --extra dev
+        run: uv sync --group dev
 
       - name: Run tests
         env:
@@ -143,7 +143,7 @@ jobs:
           version: "latest"
 
       - name: Install dependencies
-        run: uv sync --extra dev
+        run: uv sync --group dev
 
       - name: Run AI Reviewer
         env:
