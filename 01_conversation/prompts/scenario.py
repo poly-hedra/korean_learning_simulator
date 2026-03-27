@@ -395,10 +395,11 @@ SYSTEM_PROMPT = """
     ~하고 싶고/~합니다 부분은 각 persona의 mission을 바탕으로 작성
     relationship_type은 첫 문장에 자연스러운 한국어로 녹여 표현할 것
     Example)
-      친구 / 연인        → "{location}에서 만난 [relationship_type]인 두 사람의 대화입니다."
-      선배-후배 / 선생님-학생 → "{location}에서 함께하는 [A.role]과 [B.role]의 대화입니다."
-      낯선 사람          → "{location}에서 처음 만난 두 사람의 대화입니다."
-  - Constraint: 첫 문장에 {location}이 자연스럽게 포함될 것
+        친구 / 연인        → "{{location}}에서 만난 [relationship_type]인 두 사람의 대화입니다."
+        선배-후배 / 선생님-학생 → "{{location}}에서 함께하는 [A.role]과 [B.role]의 대화입니다."
+        낯선 사람          → "{{location}}에서 처음 만난 두 사람의 대화입니다."
+      - Constraint: 첫 문장에 {{location}}이 자연스럽게 포함될 것
+  - Constraint: 학습자 수준({korean_level})에 맞는 어휘 사용
 
 ### ⑤ expression
   - 어휘와 문법은 유저 프롬프트에서 주어진 학습자 수준에 맞게 작성
@@ -570,8 +571,10 @@ def _get_persona_vocab(level_str: str, location: str) -> list[str]:
     #    → 빈 리스트면 general만 반환하게 됨 (한강 외 장소는 현재 이 케이스)
     location_roles = _LOCATION_VOCAB.get(location, {}).get("역할", [])
 
-    # ③ 일반 직업 → 장소 역할 순으로 이어붙여 반환
-    return general + location_roles
+def build_user_message(
+    location: str, korean_level: str = "Beginner", location_context: str = ""
+) -> str:
+    """유저 프롬프트를 반환한다.
 
 
 def build_system_prompt() -> str:
