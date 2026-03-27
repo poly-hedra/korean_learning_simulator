@@ -9,6 +9,7 @@
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import argparse
@@ -100,7 +101,7 @@ def main() -> None:
             writer.writerow(parse_entry(entry))
 
     parse_fail = sum(1 for r in results if not r.get("scenario_parsed"))
-    print(f"\n메타 정보:")
+    print("\n메타 정보:")
     print(f"  모델: {meta.get('model')}")
     print(f"  scenario_temperature: {meta.get('scenario_temperature')}")
     print(f"  장소: {meta.get('location')}")
