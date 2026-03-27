@@ -4,7 +4,7 @@
 token_logs/conversation_token_logs.jsonl 에 로그를 누적한다.
 
 사용법:
-    python -m tests.test_vocab_matching_interactive
+    python -m scripts.vocab_matching_interactive
 """
 
 from __future__ import annotations
@@ -16,18 +16,15 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any
 
-# Windows 환경 파이프 인코딩 대응
 sys.stdin.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 from kiwipiepy import Kiwi
 
-# 프로젝트 루트를 경로에 추가
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-# 숫자로 시작하는 패키지는 import_module 사용
 _dialogue_cleansing = import_module("02_evaluation.dialogue_cleansing")
 _evaluate_vocab_mod = import_module("02_evaluation.nodes.evaluate_vocab")
 
@@ -62,8 +59,8 @@ _LOW_CONFIDENCE_THRESHOLD = 0.85
 
 
 def _load_vocab_entries() -> tuple[dict[str, str], dict[str, list[dict[str, str]]]]:
-    with _VOCAB_PATH.open(encoding="utf-8") as f:
-        entries = json.load(f)
+    with _VOCAB_PATH.open(encoding="utf-8") as handle:
+        entries = json.load(handle)
 
     vocab_map: dict[str, str] = {}
     vocab_entries: dict[str, list[dict[str, str]]] = {}
@@ -85,9 +82,9 @@ def _load_vocab_entries() -> tuple[dict[str, str], dict[str, list[dict[str, str]
 def _load_homonyms() -> dict[str, list[dict[str, str]]]:
     if not _HOMONYMS_PATH.exists():
         return {}
-    with _HOMONYMS_PATH.open(encoding="utf-8") as f:
-        data = json.load(f)
-    return {str(k): list(v) for k, v in data.items()}
+    with _HOMONYMS_PATH.open(encoding="utf-8") as handle:
+        data = json.load(handle)
+    return {str(key): list(value) for key, value in data.items()}
 
 
 def _process_utterance(
@@ -98,7 +95,7 @@ def _process_utterance(
     homonyms: dict[str, list[dict[str, str]]],
     use_llm: bool,
 ) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
-    """한 문장을 토크나이징 → 정규화 → 매칭하고 (토큰행 목록, 저신뢰 목록)을 반환한다."""
+    """한 문장을 토크나이징 → 정규화 → 매칭한다."""
 
     tokens = kiwi.tokenize(utterance)
     llm_cache: dict[tuple, tuple] = {}
@@ -108,7 +105,7 @@ def _process_utterance(
     token_rows: list[dict[str, str]] = []
     token_row_indices: dict[int, int] = {}
 
-    for token_idx, token in enumerate(tokens):
+    for token in tokens:
         if token.tag.startswith("S"):
             continue
         normalized = (
@@ -136,15 +133,12 @@ def _process_utterance(
             if is_main_pos_tag(token.tag)
             else token.form
         )
-        source = ""
         confidence = 0.0
+        source = ""
 
         if token_idx in compound_consumed:
             continue
 
-        # --- 복합 매칭 블록 ---
-        # XSN(접미사): 선생+님=선생님
-        # XR+XSA/XSV(어근+하다): 조용+하다=조용하다
         compound_key: str | None = None
         compound_tag: str | None = None
         consumed_idx: int | None = None
@@ -157,7 +151,6 @@ def _process_utterance(
             compound_key = canonicalize_word(token.form + tokens[token_idx + 1].form)
             compound_tag = token.tag
             consumed_idx = token_idx + 1
-
         elif (
             token.tag == "XR"
             and token_idx + 1 < len(tokens)
@@ -233,47 +226,43 @@ def _process_utterance(
 
         if len(candidates) == 0:
             continue
-
-        elif len(candidates) == 1:
+        if len(candidates) == 1:
             selected_entry = candidates[0]
             if not source:
                 source = "단일항목 확정"
             confidence = max(confidence, 1.0)
+        elif use_llm:
+            candidate_sig = "|".join(
+                sorted(str(candidate.get("index", "")) for candidate in candidates)
+            )
+            cache_key = (match_key, utterance, token.tag, candidate_sig)
 
-        else:
-            if use_llm:
-                candidate_sig = "|".join(
-                    sorted(str(c.get("index", "")) for c in candidates)
+            if cache_key not in llm_cache:
+                llm_cache[cache_key] = _resolve_entry_by_llm(
+                    match_key=match_key,
+                    token_tag=token.tag,
+                    utterance=utterance,
+                    token_index=token_idx,
+                    tokens=tokens,
+                    candidates=candidates,
                 )
-                cache_key = (match_key, utterance, token.tag, candidate_sig)
 
-                if cache_key not in llm_cache:
-                    llm_cache[cache_key] = _resolve_entry_by_llm(
-                        match_key=match_key,
-                        token_tag=token.tag,
-                        utterance=utterance,
-                        token_index=token_idx,
-                        tokens=tokens,
-                        candidates=candidates,
-                    )
+            llm_entry, llm_conf = llm_cache[cache_key]
+            confidence = llm_conf
 
-                llm_entry, llm_conf = llm_cache[cache_key]
-                confidence = llm_conf
-
-                if llm_entry is not None and llm_conf >= _LLM_WSD_CONFIDENCE_THRESHOLD:
-                    selected_entry = llm_entry
-                    if not source:
-                        source = "LLM 후보재판단 확정"
-                else:
-                    token_row_idx = token_row_indices.get(id(token))
-                    if token_row_idx is not None and confidence > 0:
-                        token_rows[token_row_idx]["confidence"] = f"{confidence:.2f}"
-                    continue
+            if llm_entry is not None and llm_conf >= _LLM_WSD_CONFIDENCE_THRESHOLD:
+                selected_entry = llm_entry
+                if not source:
+                    source = "LLM 후보재판단 확정"
             else:
-                # LLM 미사용: 후보 중 첫 번째를 임시 선택
-                selected_entry = candidates[0]
-                confidence = 0.5
-                source = "LLM 미사용(첫번째 후보)"
+                token_row_idx = token_row_indices.get(id(token))
+                if token_row_idx is not None and confidence > 0:
+                    token_rows[token_row_idx]["confidence"] = f"{confidence:.2f}"
+                continue
+        else:
+            selected_entry = candidates[0]
+            confidence = 0.5
+            source = "LLM 미사용(첫번째 후보)"
 
         token_row_idx = token_row_indices.get(id(token))
         if token_row_idx is not None and selected_entry:
@@ -285,7 +274,6 @@ def _process_utterance(
             )
             token_rows[token_row_idx]["confidence"] = f"{confidence:.2f}"
 
-    # 저신뢰 토큰 수집
     low_conf_rows: list[dict[str, str]] = []
     for row in token_rows:
         raw_conf = row.get("confidence", "").strip()
@@ -340,10 +328,9 @@ def _print_results(
             )
         )
 
-    # 통계 (XR 어근도 매칭 대상에 포함)
-    matched_count = sum(1 for r in token_rows if r["matched"] == "O")
+    matched_count = sum(1 for row in token_rows if row["matched"] == "O")
     matchable_count = sum(
-        1 for r in token_rows if is_main_pos_tag(r["tag"]) or r["tag"] == "XR"
+        1 for row in token_rows if is_main_pos_tag(row["tag"]) or row["tag"] == "XR"
     )
     rate = round((matched_count / matchable_count) * 100, 2) if matchable_count else 0.0
     print(f"\n  매칭: {matched_count}/{matchable_count} ({rate}%)")
@@ -433,27 +420,20 @@ def _append_log(
     lines.append("")
 
     block = "\n".join(lines) + "\n"
-    with _LOG_PATH.open("a", encoding="utf-8") as f:
-        f.write(block)
+    with _LOG_PATH.open("a", encoding="utf-8") as handle:
+        handle.write(block)
 
 
 def main() -> None:
     print("=" * 70)
     print("  어휘 매칭 대화형 테스트 도구")
-    print(
-        "  - 문장을 입력하면 Kiwi 토크나이징 후 vocabulary.json 매칭 결과를 출력합니다"
-    )
+    print("  - 문장을 입력하면 Kiwi 토크나이징 후 vocabulary.json 매칭 결과를 출력합니다")
     print("  - 'q' 또는 빈 줄 입력 시 세션을 종료하고 로그를 저장합니다")
     print("=" * 70)
 
-    use_llm_input = (
-        input("\n  LLM 동음이의어 판별 사용? (y/n, 기본값 y): ").strip().lower()
-    )
+    use_llm_input = input("\n  LLM 동음이의어 판별 사용? (y/n, 기본값 y): ").strip().lower()
     use_llm = use_llm_input != "n"
-    if use_llm:
-        print("  → LLM 동음이의어 판별 활성화")
-    else:
-        print("  → LLM 미사용 (후보 첫 번째 항목으로 임시 선택)")
+    print("  → LLM 동음이의어 판별 활성화" if use_llm else "  → LLM 미사용 (후보 첫 번째 항목으로 임시 선택)")
 
     user_id_input = input("  사용자 ID (기본값 test): ").strip()
     user_id = user_id_input if user_id_input else "test"
