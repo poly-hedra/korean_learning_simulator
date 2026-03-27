@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from services.rag_service import rag_service
-from services.scoring_service import scoring_service
-from services.tokenizer_service import tokenizer_service
+from app.infra.ai.rag_service import rag_service
+from app.infra.scoring.service import scoring_service
+from app.infra.text.tokenizer_service import tokenizer_service
 
 
 def test_scoring_service_uses_weighted_total_and_tier_boundaries():

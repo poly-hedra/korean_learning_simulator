@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from importlib import import_module
 
 
-dialogue_cleansing = import_module("02_evaluation.dialogue_cleansing")
+dialogue_cleansing = import_module("app.domain.evaluation.dialogue_cleansing")
 
 
 @dataclass

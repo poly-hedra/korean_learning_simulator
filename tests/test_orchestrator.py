@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from importlib import import_module
 
-from database.repository import repository
+from app.infra.persistence.repository import repository
 
 
-orchestrator_module = import_module("app.orchestrator")
+orchestrator_module = import_module("app.usecases.learning_orchestrator")
 LearningOrchestrator = orchestrator_module.LearningOrchestrator
 
 
@@ -37,7 +37,7 @@ def test_start_session_normalizes_level_and_saves_active_state(monkeypatch):
     )
 
     orchestrator = LearningOrchestrator()
-    state = orchestrator.start_session(
+    state = orchestrator.create_session(
         user_id="user-1",
         country="KR",
         korean_level="초급",
@@ -47,7 +47,7 @@ def test_start_session_normalizes_level_and_saves_active_state(monkeypatch):
 
     assert state["user_profile"]["korean_level"] == "Beginner"
     assert state["scenario_title"] == "한강 시나리오"
-    assert "user-1" in orchestrator.active_states
+    assert state["session_id"] in orchestrator.active_sessions
 
 
 def test_continue_turn_marks_session_finished_when_turn_limit_reached(monkeypatch):
@@ -87,13 +87,14 @@ def test_continue_turn_marks_session_finished_when_turn_limit_reached(monkeypatc
     )
 
     orchestrator = LearningOrchestrator()
-    orchestrator.active_states["user-1"] = {
+    orchestrator.active_sessions["session-1"] = {
+        "user_profile": {"user_id": "user-1"},
         "turn_limit": 1,
         "turn_count": 0,
         "conversation_log": [],
     }
 
-    result = orchestrator.continue_turn("user-1", "안녕하세요")
+    result = orchestrator.continue_turn("session-1", "안녕하세요")
 
     assert result["is_finished"] is True
     assert result["conversation_log"][-1]["speaker"] == "ai"
@@ -146,9 +147,12 @@ def test_evaluate_session_persists_session_wrong_words_and_summary(monkeypatch):
     )
 
     orchestrator = LearningOrchestrator()
-    orchestrator.active_states["user-1"] = {"conversation_log": []}
+    orchestrator.active_sessions["session-1"] = {
+        "user_profile": {"user_id": "user-1"},
+        "conversation_log": [],
+    }
 
-    result = orchestrator.evaluate_session("user-1", week=2)
+    result = orchestrator.evaluate_session("session-1")
 
     assert result["llm_summary"] == "요약 문장"
     assert repository.sessions_by_user["user-1"][0].scenario_title == "한강 대화"

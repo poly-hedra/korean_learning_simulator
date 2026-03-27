@@ -2,27 +2,27 @@ from __future__ import annotations
 
 from importlib import import_module
 
-from database.models import SessionRecord
-from database.repository import repository
+from app.infra.persistence.models import SessionRecord
+from app.infra.persistence.repository import repository
 
 
-select_weak_logs_module = import_module("03_review.nodes.select_weak_logs")
-generate_flashcards_module = import_module("03_review.nodes.generate_flashcards")
-generate_chosung_quiz_module = import_module("03_review.nodes.generate_chosung_quiz")
+select_weak_logs_module = import_module("app.domain.review.nodes.select_weak_logs")
+generate_flashcards_module = import_module("app.domain.review.nodes.generate_flashcards")
+generate_chosung_quiz_module = import_module("app.domain.review.nodes.generate_chosung_quiz")
 
 
 def test_select_weak_logs_returns_lowest_three_sessions():
     repository.save_session(
-        SessionRecord("user-1", 1, "Beginner", "한강", "s1", [], 8.5, "Beginner <B>")
+        SessionRecord("session-1", "user-1", 1, "Beginner", "한강", "s1", [], 8.5, "Beginner <B>")
     )
     repository.save_session(
-        SessionRecord("user-1", 2, "Beginner", "명동", "s2", [], 5.2, "Beginner <D>")
+        SessionRecord("session-2", "user-1", 2, "Beginner", "명동", "s2", [], 5.2, "Beginner <D>")
     )
     repository.save_session(
-        SessionRecord("user-1", 3, "Beginner", "편의점", "s3", [], 6.7, "Beginner <C>")
+        SessionRecord("session-3", "user-1", 3, "Beginner", "편의점", "s3", [], 6.7, "Beginner <C>")
     )
     repository.save_session(
-        SessionRecord("user-1", 4, "Beginner", "공원", "s4", [], 4.1, "Beginner <D>")
+        SessionRecord("session-4", "user-1", 4, "Beginner", "공원", "s4", [], 4.1, "Beginner <D>")
     )
 
     result = select_weak_logs_module.select_weak_logs(

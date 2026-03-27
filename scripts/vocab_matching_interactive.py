@@ -25,8 +25,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-_dialogue_cleansing = import_module("02_evaluation.dialogue_cleansing")
-_evaluate_vocab_mod = import_module("02_evaluation.nodes.evaluate_vocab")
+_dialogue_cleansing = import_module("app.domain.evaluation.dialogue_cleansing")
+_evaluate_vocab_mod = import_module("app.domain.evaluation.nodes.evaluate_vocab")
 
 canonicalize_word = _dialogue_cleansing.canonicalize_word
 expand_vocab_word_forms = _dialogue_cleansing.expand_vocab_word_forms
@@ -43,7 +43,7 @@ _resolve_suspicious_normalization_by_llm = (
 _VOCAB_PATH = _PROJECT_ROOT / "database" / "vocabulary.json"
 _HOMONYMS_PATH = _PROJECT_ROOT / "database" / "vocabulary_homonyms.json"
 _LOG_PATH = (
-    _PROJECT_ROOT / "02_evaluation" / "token_logs" / "conversation_token_logs.jsonl"
+    _PROJECT_ROOT / "app" / "domain" / "evaluation" / "token_logs" / "conversation_token_logs.jsonl"
 )
 
 _LLM_WSD_CONFIDENCE_THRESHOLD = 0.7

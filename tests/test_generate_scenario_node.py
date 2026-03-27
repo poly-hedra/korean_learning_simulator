@@ -4,7 +4,7 @@ import json
 from importlib import import_module
 
 
-generate_scenario_module = import_module("01_conversation.nodes.generate_scenario")
+generate_scenario_module = import_module("app.domain.conversation.nodes.generate_scenario")
 
 
 def test_generate_scenario_uses_parsed_llm_payload(monkeypatch):

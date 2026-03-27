@@ -13,11 +13,11 @@ from typing import Any
 import gradio as gr
 
 try:
-    from app.orchestrator import orchestrator
+    from app.usecases.learning_orchestrator import orchestrator
 except ModuleNotFoundError:
     # `python app/ui.py`로 실행할 때 프로젝트 루트를 import 경로에 추가
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from app.orchestrator import orchestrator
+    from app.usecases.learning_orchestrator import orchestrator
 
 
 UI_CSS = """
@@ -235,13 +235,12 @@ def start_session_ui(
     location: str,
 ) -> tuple[str, str, str, list[list[str]], str, bool, bool]:
     try:
-        state = orchestrator.start_session(
+        state = orchestrator.create_session(
             user_id=user_id.strip() or "guest",
             country=country.strip() or "Not provided",
             korean_level=level,
             has_korean_media_experience=media_exp,
             location=location,
-            selected_role=None,
         )
     except Exception as exc:  # UI에서는 예외를 메시지로 반환
         return "", "", f"세션 시작 실패: {exc}", [], "", False, False
@@ -257,19 +256,19 @@ def start_session_ui(
         personas_text,
         "세션 시작 완료. 역할(A/B)을 선택한 뒤 '역할 확정' 버튼을 눌러주세요.",
         [],
-        state.get("user_profile", {}).get("user_id", user_id),
+        state.get("session_id", ""),
         False,
         False,
     )
 
 
 def choose_role_ui(
-    user_id: str,
+    session_id: str,
     selected_role: str,
 ) -> tuple[list[list[str]], str, bool, bool]:
     try:
         state = orchestrator.select_role_and_opening(
-            user_id=user_id,
+            session_id=session_id,
             selected_role=selected_role,
         )
     except Exception as exc:
@@ -285,7 +284,7 @@ def choose_role_ui(
 
 
 def send_message_ui(
-    user_id: str,
+    session_id: str,
     role_ready: bool,
     conversation_finished: bool,
     message: str,
@@ -320,7 +319,9 @@ def send_message_ui(
         )
 
     try:
-        state = orchestrator.continue_turn(user_id=user_id, user_input=user_message)
+        state = orchestrator.continue_turn(
+            session_id=session_id, user_input=user_message
+        )
     except Exception as exc:
         return (
             chat_pairs,
@@ -340,9 +341,9 @@ def send_message_ui(
     return new_pairs, "", status, role_ready, finished
 
 
-def evaluate_ui(user_id: str, week: int) -> tuple[str, str, str, str, str, int]:
+def evaluate_ui(session_id: str, week: int) -> tuple[str, str, str, str, str, int]:
     try:
-        evaluated = orchestrator.evaluate_session(user_id=user_id, week=week)
+        evaluated = orchestrator.evaluate_session(session_id=session_id)
     except Exception as exc:
         return "", "", "", "", f"평가 실패: {exc}", week
 
@@ -379,8 +380,10 @@ def evaluate_ui(user_id: str, week: int) -> tuple[str, str, str, str, str, int]:
     return str(total), str(tier), sck_text, feedback, summary, week + 1
 
 
-def build_review_ui(user_id: str) -> tuple[str, list[dict], list[dict], int, int, int]:
+def build_review_ui(session_id: str) -> tuple[str, list[dict], list[dict], int, int, int]:
     try:
+        session = orchestrator.get_session_state(session_id)
+        user_id = session.get("user_profile", {}).get("user_id", "")
         review = orchestrator.build_weekly_review(user_id=user_id)
     except Exception as exc:
         return f"복습 생성 실패: {exc}", [], [], 0, 0, 0

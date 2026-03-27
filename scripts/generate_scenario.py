@@ -23,9 +23,9 @@ from datetime import datetime
 
 from importlib import import_module
 
-from services.llm_service import llm_service
+from app.infra.ai.service import llm_service
 
-_scenario_module = import_module("01_conversation.prompts.scenario")
+_scenario_module = import_module("app.domain.conversation.prompts.scenario")
 build_system_prompt = _scenario_module.build_system_prompt
 build_user_message = _scenario_module.build_user_message
 clean_dialogue_functions = _scenario_module.clean_dialogue_functions
