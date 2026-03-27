@@ -82,7 +82,6 @@ jobs:
     name: Report Status
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
-    # needs: [lint, test] 추후 추가 예정
     needs: [lint]
     permissions:
       pull-requests: write
@@ -91,12 +90,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LINT_RESULT: ${{ needs.lint.result }}
-          # TEST_RESULT: ${{ needs.test.result }} 추후 추가 예정
         run: |
           # 이모지 설정
           if [ "$LINT_RESULT" == "success" ]; then LINT_ICON="✅"; else LINT_ICON="❌"; fi
-          if [ "$TEST_RESULT" == "success" ]; then TEST_ICON="✅"; else TEST_ICON="❌"; fi
-          if [ "$TEST_RESULT" == "skipped" ]; then TEST_ICON="⚪"; fi
 
           # 코멘트 내용 작성
           echo "### 🛡️ Korean Learning Simulator CI Report" > status_report.md
@@ -104,14 +100,13 @@ jobs:
           echo "| Category | Status |" >> status_report.md
           echo "|----------|--------|" >> status_report.md
           echo "| **Lint** | $LINT_ICON $LINT_RESULT |" >> status_report.md
-          echo "| **Test** | $TEST_ICON $TEST_RESULT |" >> status_report.md
           echo "" >> status_report.md
 
-          if [ "$LINT_RESULT" != "success" ] || [ "$TEST_RESULT" == "failure" ]; then
-             echo "⚠️ **테스트가 실패했습니다.** 로그를 확인해주세요." >> status_report.md
+          if [ "$LINT_RESULT" != "success" ]; then
+             echo "⚠️ **코드 품질 검사를 실패했습니다.** 로그를 확인해주세요." >> status_report.md
              EXIT_CODE=1
           else
-             echo "🎉 **모든 테스트를 통과했습니다!**" >> status_report.md
+             echo "🎉 **모든 검사를 통과했습니다!**" >> status_report.md
              EXIT_CODE=0
           fi
 
@@ -126,7 +121,7 @@ jobs:
     name: AI Review
     runs-on: ubuntu-latest
     needs: lint
-    if: github.event_name == 'pull_request'
+    if: always() && github.event_name == 'pull_request'
     permissions:
       contents: read
       pull-requests: write
