@@ -24,11 +24,14 @@ from services.llm_service import llm_service
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+
 # 동적 임포트를 함수로 이동
 def load_scenario_module():
     from importlib import import_module
+
     _scenario_module = import_module("01_conversation.prompts.scenario")
     return _scenario_module
+
 
 # 모듈 로드 및 전역 변수 할당
 _scenario_module = load_scenario_module()
@@ -66,7 +69,9 @@ def run_once(location: str, level: str) -> dict:
             # LLM이 "[각자 목표] 취향 묻기" 같이 카테고리 태그를 값에 포함하거나
             # "각자 목표" 처럼 카테고리명 자체를 출력하는 오류를 후처리로 정리한다.
             # cleaned가 빈 리스트면 원본을 그대로 유지한다(테스트 결과 보존 우선).
-            cleaned = [f for f in clean_dialogue_functions(parsed["dialogue_function"]) if f]
+            cleaned = [
+                f for f in clean_dialogue_functions(parsed["dialogue_function"]) if f
+            ]
             if cleaned:
                 parsed["dialogue_function"] = cleaned
         result["scenario_parsed"] = parsed
@@ -119,7 +124,7 @@ def main() -> None:
     for i in range(args.runs):
         print(f"\n{'='*60}")
         print(f"Run {i+1}/{args.runs} | 장소: {args.location} | 수준: {args.level}")
-        print("="*60)
+        print("=" * 60)
 
         result = run_once(location=args.location, level=args.level)
         result["run"] = i + 1
