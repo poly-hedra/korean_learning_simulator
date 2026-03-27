@@ -198,7 +198,6 @@ jobs:
             # ===== Database =====
             SUPABASE_URL=${{ secrets.SUPABASE_URL }}
             SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
-            SUPABASE_CONNECTION_STRING=${{ secrets.SUPABASE_CONNECTION_STRING }}
 
             # ===== LLMOps 1강: LiteLLM Gateway =====
             USE_LITELLM=true

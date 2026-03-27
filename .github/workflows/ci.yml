@@ -83,7 +83,8 @@ jobs:
     name: Report Status
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
-    needs: [lint, test]
+    # needs: [lint, test]
+    needs: [lint] # 추후 테스트 추가
     permissions:
       pull-requests: write
     steps:
@@ -91,7 +92,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LINT_RESULT: ${{ needs.lint.result }}
-          TEST_RESULT: ${{ needs.test.result }}
+        #   TEST_RESULT: ${{ needs.test.result }}
         run: |
           # 이모지 설정
           if [ "$LINT_RESULT" == "success" ]; then LINT_ICON="✅"; else LINT_ICON="❌"; fi
