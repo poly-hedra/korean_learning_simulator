@@ -403,12 +403,11 @@ SYSTEM_PROMPT = """
         선배-후배 / 선생님-학생 → "{location}에서 함께하는 [A.role]과 [B.role]의 대화입니다."
         낯선 사람          → "{location}에서 처음 만난 두 사람의 대화입니다."
       - Constraint: 첫 문장에 {location}이 자연스럽게 포함될 것
-  - Constraint: 학습자 수준({korean_level})에 맞는 어휘 사용
 
 ### ⑤ expression
-  - 어휘와 문법은 유저 프롬프트에서 주어진 학습자 수준에 맞게 작성
+  - 어휘와 문법은 입력된 학습자 수준에 맞게 작성
   - 단, 장소명·시설명·고유명사는 수준과 무관하게 자유롭게 사용 가능
-  - 유저 프롬프트의 ## 참고 어휘를 mission·scenario_description 작성 시 적극 반영
+  - ## 참고 어휘를 mission·scenario_description 작성 시 적극 반영
 
 ### ⑥ dialogue_function
   - 1개만 포함할 것
@@ -641,7 +640,7 @@ def build_user_message(
 #                            │
 #                            ▼
 #                   [LLM 실행 순서 (step 0~6)]
-#                   0. 입력 확인 — relationship_type·활동 풀·
+#                   0. 입력 확인 — relationship_type·Activities 풀·
 #                      dialogue_function 풀 전체를 확정
 #                   1. 활동 선택 (활동 풀에서)
 #                      → 1개 선택
