@@ -22,7 +22,7 @@ def _fallback_bundle(level: str, location: str) -> dict:
         "scenario_title": f"{location}에서의 대화",
         # LLM 파싱 실패 시 학습자에게 보여줄 최소한의 상황 안내 문장
         "scenario_description": f"{location}에서 만난 두 사람의 대화입니다.",
-        "dialogue_function": "일상 묻기",
+        "dialogue_function": "장소 묻기",
         "relationship_type": "낯선 사람",
         "personas": {
             "A": {
