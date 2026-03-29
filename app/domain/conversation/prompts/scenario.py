@@ -409,11 +409,6 @@ SYSTEM_PROMPT = """
   - 단, 장소명·시설명·고유명사는 수준과 무관하게 자유롭게 사용 가능
   - ## 참고 어휘를 mission·scenario_description 작성 시 적극 반영
 
-### ⑥ dialogue_function
-  - 1개만 포함할 것
-  - 배열 항목은 기능명만 포함할 것
-  - Example) ["취향 묻기"]
-  - Counter-example) ["취향 묻기", "기분 묻기"]
 
 ## Output Schema
 
@@ -434,7 +429,7 @@ Field descriptions:
   scenario_title      — 시나리오를 한 문장으로 요약한 제목
   scenario_description — 학습자가 대화 맥락을 이해할 수 있는 1~2문장 상황 안내 (## Constraints ④)
   location            — 입력받은 장소값 그대로
-  dialogue_function   — 선택한 대화 기능 (문자열, ## Constraints ⑥)
+  dialogue_function   — 선택한 대화 기능 (문자열)
   relationship_type   — 입력받은 관계 유형값 그대로
   personas.A/B
     name    — 인물 이름
@@ -458,7 +453,7 @@ _USER_PROMPT_TEMPLATE = """
 1. [활동 선택] {relationship_type}과 가장 자연스러운 활동 1개 선택
    Note) 활동 풀 전체를 고르게 참고할 것.
 
-2. [dialogue_function 확정] 선택한 활동에 가장 자연스럽게 연결되는 dialogue_function 1개를 dialogue_function 풀에서 확정
+2. [dialogue_function 확정] 주어진 dialogue_function 풀에서 활동과 가장 자연스러운 기능 1개만 선택
    낯선 사람 → 정보 요청 성격의 기능(장소 묻기, 시간 묻기 등) 우선 선택
 
 3. [personas 설정] (## Constraints ① role 규칙 준수)
