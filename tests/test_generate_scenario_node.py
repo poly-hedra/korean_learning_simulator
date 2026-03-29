@@ -11,7 +11,7 @@ def test_generate_scenario_uses_parsed_llm_payload(monkeypatch):
     payload = {
         "scenario_title": "한강에서 자전거를 타는 대화",
         "scenario_description": "한강에서 만난 두 사람의 대화입니다.",
-        "dialogue_function": ["[각자 목표] 취향 묻기", "경험 묻기"],
+        "dialogue_function": "취향 묻기",
         "relationship_type": "친구",
         "personas": {
             "A": {
@@ -46,7 +46,7 @@ def test_generate_scenario_uses_parsed_llm_payload(monkeypatch):
 
     assert result["scenario_title"] == payload["scenario_title"]
     assert result["scenario_description"] == payload["scenario_description"]
-    assert result["dialogue_function"] == ["취향 묻기", "경험 묻기"]
+    assert result["dialogue_function"] == "취향 묻기"
     assert result["relationship_type"] == "친구"
     assert result["personas"]["A"]["name"] == "민지"
 

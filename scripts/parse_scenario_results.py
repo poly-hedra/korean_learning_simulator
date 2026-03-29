@@ -26,7 +26,7 @@ def parse_entry(entry: dict) -> dict:
     return {
         "run": entry.get("run", ""),
         "relationship_type": parsed.get("relationship_type", ""),
-        "dialogue_function": ", ".join(parsed.get("dialogue_function", [])),
+        "dialogue_function": parsed.get("dialogue_function", ""),
         "scenario_title": parsed.get("scenario_title", ""),
         "scenario_description": parsed.get("scenario_description", ""),
         "A_name": persona_a.get("name", ""),

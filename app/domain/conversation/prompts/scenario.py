@@ -421,7 +421,7 @@ SYSTEM_PROMPT = """
   "scenario_title": "",
   "scenario_description": "",
   "location": "",
-  "dialogue_function": [],
+  "dialogue_function": "",
   "relationship_type": "",
   "personas": {
     "A": { "name": "", "age": "0", "gender": "남/여", "role": "", "mission": "" },
@@ -434,7 +434,7 @@ Field descriptions:
   scenario_title      — 시나리오를 한 문장으로 요약한 제목
   scenario_description — 학습자가 대화 맥락을 이해할 수 있는 1~2문장 상황 안내 (## Constraints ④)
   location            — 입력받은 장소값 그대로
-  dialogue_function   — 선택한 대화 기능 목록 (문자열 배열, ## Constraints ⑥)
+  dialogue_function   — 선택한 대화 기능 (문자열, ## Constraints ⑥)
   relationship_type   — 입력받은 관계 유형값 그대로
   personas.A/B
     name    — 인물 이름
@@ -474,7 +474,7 @@ _USER_PROMPT_TEMPLATE = """
 {{ "scenario_title": "백화점에서 화장실을 찾는 대학생",
   "scenario_description": "백화점에서 처음 만난 두 사람의 대화입니다. 리사는 화장실이 어디에 있는지 알고 싶고, 영은은 위치를 알려 주고 싶어합니다.",
   "location": "백화점",
-  "dialogue_function": ["장소 묻기"], "relationship_type": "낯선 사람",
+  "dialogue_function": "장소 묻기", "relationship_type": "낯선 사람",
   "personas": {{
     "A": {{ "name": "리사", "age": "21", "gender": "여", "role": "대학생", "mission": "화장실이 어디에 있는지 알고 싶어요." }},
     "B": {{ "name": "영은", "age": "35", "gender": "여", "role": "백화점 직원", "mission": "화장실 위치를 알려 주고 싶어요." }}
@@ -485,7 +485,7 @@ _USER_PROMPT_TEMPLATE = """
 {{ "scenario_title": "카페에서 음료 취향을 나누는 연인",
   "scenario_description": "카페에서 만난 연인 관계인 두 사람의 대화입니다. 현아는 제이크가 아메리카노를 좋아하는지 알고 싶고, 제이크는 현아가 어떤 음료를 즐기는지 궁금합니다.",
   "location": "카페",
-  "dialogue_function": ["취향 묻기"], "relationship_type": "연인",
+  "dialogue_function": "취향 묻기", "relationship_type": "연인",
   "personas": {{
     "A": {{ "name": "현아", "age": "23", "gender": "여", "role": "여자 친구", "mission": "남자 친구가 아메리카노를 좋아하는지 알고 싶어요." }},
     "B": {{ "name": "제이크", "age": "24", "gender": "남", "role": "남자 친구", "mission": "여자 친구가 어떤 음료를 즐기는지 궁금해요." }}

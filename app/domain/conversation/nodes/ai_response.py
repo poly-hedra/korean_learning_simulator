@@ -41,10 +41,10 @@ def ai_response(state: ConversationState) -> ConversationState:
 
     location = state.get("location", "")
     relationship_type = state.get("relationship_type", "")
-    dialogue_function = state.get("dialogue_function", [])
+    dialogue_function = state.get("dialogue_function", "")
     scenario = (
         f"{relationship_type} 관계인 두 사람이 {location}에 함께 있다. "
-        f"대화 목적은 {', '.join(dialogue_function)}이다."
+        f"대화 목적은 {dialogue_function}이다."
     )
 
     # 간결한 페르소나 설명 구성
