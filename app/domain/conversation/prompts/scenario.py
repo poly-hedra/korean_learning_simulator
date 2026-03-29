@@ -500,33 +500,6 @@ _USER_PROMPT_TEMPLATE = """
 {general_vocab}
 """
 
-
-# ----------------------------------------------------------------
-# dialogue_function JSON 출력에서 카테고리 태그를 제거하는 클렌징 함수.
-# LLM이 태그를 잘못 포함시키는 두 가지 실패 패턴을 후처리로 방어한다.
-#   실패 유형 1: ["[각자 목표] 취향 묻기"]  → "취향 묻기"
-#   실패 유형 2: ["각자 목표"]              → "" (호출부에서 if f 로 필터 필요)
-#
-# [정규식 설명]
-#   r"^\[.*?\]\s*"
-#   ^        → 문자열 맨 앞에서만 매칭 (값 중간의 [] 는 건드리지 않음)
-#   \[.*?\]  → "[" 로 시작해 "]" 로 끝나는 최소 매칭 (예: "[각자 목표]")
-#   \s*      → 태그 뒤 공백 제거
-#
-# [호출부 주의사항]
-#   실패 유형 2("각자 목표")는 태그 제거 후 빈 문자열("")이 된다.
-#   호출부에서 반드시 `if f` 로 빈 문자열을 필터해야 한다.
-#   예) cleaned = [f for f in clean_dialogue_functions(items) if f]
-# ----------------------------------------------------------------
-def clean_dialogue_functions(items: list[str]) -> list[str]:
-    """LLM 출력의 dialogue_function 배열에서 카테고리 태그를 제거한다.
-
-    예) "[각자 목표] 취향 묻기" → "취향 문기"
-        "각자 목표"             → "" (빈 문자열 → 호출부에서 if f 필터 필요)
-    """
-    return [re.sub(r"^\[.*?\]\s*", "", item).strip() for item in items]
-
-
 def _get_activities(location: str, n_per_category: int = 2) -> str:
     """_ACTIVITIES에서 location에 해당하는 카테고리별 활동을 샘플링해 반환한다.
 
