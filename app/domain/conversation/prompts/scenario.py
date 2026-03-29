@@ -6,7 +6,6 @@
 
 import json
 import random
-import re
 from pathlib import Path
 
 VERSION = "education_based 3.0"
