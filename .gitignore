@@ -24,6 +24,8 @@ __pycache__/
 
 # 데이터 (필요하면)
 data/
+!**/data/vocabulary.json
 
-# 테스트 결과물 (로컬 전용)
+# 테스트/스크립트 결과물 (로컬 전용)
 tests/results/
+scripts/results/

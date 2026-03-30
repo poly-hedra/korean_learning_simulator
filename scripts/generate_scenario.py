@@ -29,7 +29,6 @@ from app.infra.ai.service import llm_service
 _scenario_module = import_module("app.domain.conversation.prompts.scenario")
 build_system_prompt = _scenario_module.build_system_prompt
 build_user_message = _scenario_module.build_user_message
-clean_dialogue_functions = _scenario_module.clean_dialogue_functions
 VERSION = _scenario_module.VERSION
 
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -57,13 +56,9 @@ def run_once(location: str, level: str) -> dict:
         start = (last_start + 1) if last_start != -1 else raw.find("{")
         parsed = json.loads(raw[start : end + 1])
         if isinstance(parsed, dict) and "dialogue_function" in parsed:
-            cleaned = [
-                item
-                for item in clean_dialogue_functions(parsed["dialogue_function"])
-                if item
-            ]
-            if cleaned:
-                parsed["dialogue_function"] = cleaned
+            raw = parsed["dialogue_function"]
+            if isinstance(raw, list):
+                parsed["dialogue_function"] = raw[0] if raw else ""
         result["scenario_parsed"] = parsed
     except Exception:
         result["scenario_parsed"] = None

@@ -33,7 +33,7 @@ class SessionStateResponse(BaseModel):
     turn_limit: int = 0
     is_finished: bool = False
     relationship_type: str = ""
-    dialogue_function: list[str] = Field(default_factory=list)
+    dialogue_function: str = ""
     latest_ai_response: str = ""
     location_context: str = ""
 
