@@ -43,7 +43,7 @@ name: Korean Learning Simulator CD
 
 on:
   push:
-    branches: [main]
+    branches: [dev]
 
   # 수동 실행 허용 (긴급 배포/롤백용)
   workflow_dispatch:
