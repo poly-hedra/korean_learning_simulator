@@ -44,6 +44,10 @@ name: Korean Learning Simulator CD
 on:
   push:
     branches: [dev]
+  workflow_run:
+    workflows: ["Korean Learning Simulator CI"]
+    types:
+      - completed
 
   # 수동 실행 허용 (긴급 배포/롤백용)
   workflow_dispatch:
