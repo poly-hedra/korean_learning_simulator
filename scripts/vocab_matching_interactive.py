@@ -40,8 +40,8 @@ _resolve_suspicious_normalization_by_llm = (
     _evaluate_vocab_mod._resolve_suspicious_normalization_by_llm
 )
 
-_VOCAB_PATH = _PROJECT_ROOT / "database" / "vocabulary.json"
-_HOMONYMS_PATH = _PROJECT_ROOT / "database" / "vocabulary_homonyms.json"
+_VOCAB_PATH = _PROJECT_ROOT / "app" / "infra" / "persistence" / "data" / "vocabulary.json"
+_HOMONYMS_PATH = _PROJECT_ROOT / "app" / "infra" / "persistence" / "data" / "vocabulary_homonyms.json"
 _LOG_PATH = (
     _PROJECT_ROOT / "app" / "domain" / "evaluation" / "token_logs" / "conversation_token_logs.jsonl"
 )
