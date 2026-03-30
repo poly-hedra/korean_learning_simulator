@@ -262,11 +262,9 @@ _VOCAB_PATH = (
     / "data"
     / "vocabulary.json"
 )
-# __file__ = tests/based_prompts/education_based.py
-# .parent       → tests/based_prompts/
-# .parent.parent → tests/
-# .parent.parent.parent → 프로젝트 루트 (korean_learning_simulator/)
-# / "database" / "vocabulary.json" → database/vocabulary.json
+# __file__ = app/domain/conversation/prompts/scenario.py
+# parents[3] = app
+# _VOCAB_PATH = app/infra/persistence/data/vocabulary.json
 
 _VOCAB_CACHE: list[dict] | None = None
 # 모듈 로드 시점에 None으로 초기화.
@@ -390,7 +388,7 @@ SYSTEM_PROMPT = """
     Example) A mission: "화장실이 어디에 있는지 알고 싶어요."
              B mission: "화장실 위치를 알려 주고 싶어요."
 
-  - Counter-example) "친구와 만나기로 했어요." (완료된 상황 금지)
+  - bad-example) "친구와 만나기로 했어요." (완료된 상황 금지)
                      "오늘 저녁에 한강에서 함께 달리기 할래요?" (대화에 활용할 첫 문장 금지)
 
 ### ④ scenario_description
