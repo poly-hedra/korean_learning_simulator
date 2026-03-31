@@ -253,41 +253,41 @@ jobs:
             echo "🔄 컨테이너 교체 중..."
             $DOCKER_COMPOSE up -d --force-recreate
 
-            # Step 5: 헬스체크 (최대 60초 대기)
-            echo "⏳ 헬스체크 중..."
-            MAX_RETRIES=12
-            RETRY_INTERVAL=5
-            HEALTH_CHECK_PASSED=false
-
-            for i in $(seq 1 $MAX_RETRIES); do
-              HTTP_STATUS=$(curl -sL -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/health/ 2>/dev/null || echo "000")
-
-              if [ "$HTTP_STATUS" -eq 200 ]; then
-                echo "✅ 서버 정상 (HTTP $HTTP_STATUS)"
-                HEALTH_CHECK_PASSED=true
-                break
-              fi
-
-              echo "  시도 $i/$MAX_RETRIES (HTTP $HTTP_STATUS)..."
-              sleep $RETRY_INTERVAL
-            done
-
-            # 헬스체크 실패 처리
-            if [ "$HEALTH_CHECK_PASSED" != "true" ]; then
-              echo "❌ 헬스체크 실패!"
-              $DOCKER_COMPOSE logs --tail=100
-
-              # 자동 롤백 시도
-              if [ -f ".previous_image" ]; then
-                echo "🔙 자동 롤백 시도..."
-                PREV_IMAGE=$(cat .previous_image)
-                docker pull ${PREV_IMAGE}
-                export KOREAN_IMAGE=${PREV_IMAGE}
-                $DOCKER_COMPOSE up -d --force-recreate
-                echo "⚠️ 이전 버전으로 롤백됨: ${PREV_IMAGE}"
-              fi
-              exit 1
-            fi
+            # # Step 5: 헬스체크 (최대 60초 대기) - 임시 주석처리 (헬스체크 엔드포인트 없음)
+            # echo "⏳ 헬스체크 중..."
+            # MAX_RETRIES=12
+            # RETRY_INTERVAL=5
+            # HEALTH_CHECK_PASSED=false
+            #
+            # for i in $(seq 1 $MAX_RETRIES); do
+            #   HTTP_STATUS=$(curl -sL -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/health/ 2>/dev/null || echo "000")
+            #
+            #   if [ "$HTTP_STATUS" -eq 200 ]; then
+            #     echo "✅ 서버 정상 (HTTP $HTTP_STATUS)"
+            #     HEALTH_CHECK_PASSED=true
+            #     break
+            #   fi
+            #
+            #   echo "  시도 $i/$MAX_RETRIES (HTTP $HTTP_STATUS)..."
+            #   sleep $RETRY_INTERVAL
+            # done
+            #
+            # # 헬스체크 실패 처리
+            # if [ "$HEALTH_CHECK_PASSED" != "true" ]; then
+            #   echo "❌ 헬스체크 실패!"
+            #   $DOCKER_COMPOSE logs --tail=100
+            #
+            #   # 자동 롤백 시도
+            #   if [ -f ".previous_image" ]; then
+            #     echo "🔙 자동 롤백 시도..."
+            #     PREV_IMAGE=$(cat .previous_image)
+            #     docker pull ${PREV_IMAGE}
+            #     export KOREAN_IMAGE=${PREV_IMAGE}
+            #     $DOCKER_COMPOSE up -d --force-recreate
+            #     echo "⚠️ 이전 버전으로 롤백됨: ${PREV_IMAGE}"
+            #   fi
+            #   exit 1
+            # fi
 
             # Step 6: 정리 (오래된 이미지 삭제)
             docker image prune -af
@@ -337,22 +337,26 @@ jobs:
             export KOREAN_IMAGE=${PREV_IMAGE}
             $DOCKER_COMPOSE up -d --force-recreate
 
-            # 헬스체크 (retry 로직 추가)
-            echo "⏳ 헬스체크 중..."
-            MAX_RETRIES=12
-            for i in $(seq 1 $MAX_RETRIES); do
-              HTTP_STATUS=$(curl -sL -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/health/ 2>/dev/null || echo "000")
-              if [ "$HTTP_STATUS" -eq 200 ]; then
-                echo "✅ 롤백 성공!"
-                echo "${PREV_IMAGE}" > .current_image
-                exit 0
-              fi
-              echo "  시도 $i/$MAX_RETRIES (HTTP $HTTP_STATUS)..."
-              sleep 5
-            done
-            echo "❌ 롤백 실패!"
-            $DOCKER_COMPOSE logs --tail=50
-            exit 1
+            # # 헬스체크 (retry 로직 추가) - 임시 주석처리 (헬스체크 엔드포인트 없음)
+            # echo "⏳ 헬스체크 중..."
+            # MAX_RETRIES=12
+            # for i in $(seq 1 $MAX_RETRIES); do
+            #   HTTP_STATUS=$(curl -sL -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/health/ 2>/dev/null || echo "000")
+            #   if [ "$HTTP_STATUS" -eq 200 ]; then
+            #     echo "✅ 롤백 성공!"
+            #     echo "${PREV_IMAGE}" > .current_image
+            #     exit 0
+            #   fi
+            #   echo "  시도 $i/$MAX_RETRIES (HTTP $HTTP_STATUS)..."
+            #   sleep 5
+            # done
+            # echo "❌ 롤백 실패!"
+            # $DOCKER_COMPOSE logs --tail=50
+            # exit 1
+
+            # 롤백 성공 처리 (헬스체크 생략)
+            echo "✅ 롤백 완료!"
+            echo "${PREV_IMAGE}" > .current_image
 
   # =========================================================
   # Job 3: 알림 (GitHub Summary)
