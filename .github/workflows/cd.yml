@@ -44,10 +44,6 @@ name: Korean Learning Simulator CD
 on:
   push:
     branches: [dev]
-  workflow_run:
-    workflows: ["Korean Learning Simulator CI"]
-    types:
-      - completed
 
   # 수동 실행 허용 (긴급 배포/롤백용)
   workflow_dispatch:
@@ -144,6 +140,9 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 15m
+          debug: true
           script: |
             set -e
 
@@ -169,59 +168,59 @@ jobs:
             # 🆕 docker-compose.yml 없으면 자동 생성
             if [ ! -f "docker-compose.yml" ]; then
               echo "📝 docker-compose.yml 생성 중..."
-              cat > docker-compose.yml << 'COMPOSE_EOF'
-            services:
-              korean-learning:
-                image: ${KOREAN_IMAGE:-ghcr.io/owner/repo/korean-learning:latest}
-                container_name: korean-learning
-                restart: unless-stopped
-                ports:
-                  - "8000:8000"
-                env_file:
-                  - .env
-                healthcheck:
-                  test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/"]
-                  interval: 30s
-                  timeout: 10s
-                  retries: 3
-                  start_period: 10s
-            COMPOSE_EOF
+              cat > docker-compose.yml <<- 'COMPOSE_EOF'
+                services:
+                  korean-learning:
+                    image: ${KOREAN_IMAGE:-ghcr.io/owner/repo/korean-learning:latest}
+                    container_name: korean-learning
+                    restart: unless-stopped
+                    ports:
+                      - "8000:8000"
+                    env_file:
+                      - .env
+                    healthcheck:
+                      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/"]
+                      interval: 30s
+                      timeout: 10s
+                      retries: 3
+                      start_period: 10s
+              COMPOSE_EOF
             fi
 
             # 🆕 .env 파일 생성 (GitHub Secrets에서 자동 주입)
             echo "📝 .env 파일 생성 중..."
-            cat > .env << ENV_EOF
-            # ===== Application =====
-            ENVIRONMENT=production
-            DEBUG=false
+            cat > .env <<- ENV_EOF
+              # ===== Application =====
+              ENVIRONMENT=production
+              DEBUG=false
 
-            # ===== LLM API =====
-            UPSTAGE_API_KEY=${{ secrets.UPSTAGE_API_KEY }}
-            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+              # ===== LLM API =====
+              UPSTAGE_API_KEY=${{ secrets.UPSTAGE_API_KEY }}
+              GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
 
-            # ===== Database =====
-            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-            SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
-            SUPABASE_CONNECTION_STRING=${{ secrets.SUPABASE_CONNECTION_STRING }}
+              # ===== Database =====
+              SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+              SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+              SUPABASE_CONNECTION_STRING=${{ secrets.SUPABASE_CONNECTION_STRING }}
 
-            # ===== LLMOps 1강: LiteLLM Gateway =====
-            USE_LITELLM=true
+              # ===== LLMOps 1강: LiteLLM Gateway =====
+              USE_LITELLM=true
 
-            # ===== LLMOps 2강: 체크포인터 =====
-            ENABLE_CHECKPOINTER=true
-            CHECKPOINTER_TYPE=postgres
+              # ===== LLMOps 2강: 체크포인터 =====
+              ENABLE_CHECKPOINTER=true
+              CHECKPOINTER_TYPE=postgres
 
-            # ===== LLMOps 2강: 비용 관리 =====
-            ENABLE_COST_TRACKING=true
-            DAILY_COST_LIMIT=10.0
-            MAX_CONTEXT_TOKENS=3000
-            DISCORD_WEBHOOK_URL=${{ secrets.DISCORD_WEBHOOK_URL }}
+              # ===== LLMOps 2강: 비용 관리 =====
+              ENABLE_COST_TRACKING=true
+              DAILY_COST_LIMIT=10.0
+              MAX_CONTEXT_TOKENS=3000
+              DISCORD_WEBHOOK_URL=${{ secrets.DISCORD_WEBHOOK_URL }}
 
-            # ===== 🆕 LLMOps 3강: Langfuse Observability =====
-            ENABLE_LANGFUSE=true
-            LANGFUSE_PUBLIC_KEY=${{ secrets.LANGFUSE_PUBLIC_KEY }}
-            LANGFUSE_SECRET_KEY=${{ secrets.LANGFUSE_SECRET_KEY }}
-            LANGFUSE_HOST=https://us.cloud.langfuse.com
+              # ===== 🆕 LLMOps 3강: Langfuse Observability =====
+              ENABLE_LANGFUSE=true
+              LANGFUSE_PUBLIC_KEY=${{ secrets.LANGFUSE_PUBLIC_KEY }}
+              LANGFUSE_SECRET_KEY=${{ secrets.LANGFUSE_SECRET_KEY }}
+              LANGFUSE_HOST=https://us.cloud.langfuse.com
             ENV_EOF
             echo "✅ .env 파일 생성 완료!"
 
@@ -297,6 +296,9 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 15m
+          debug: true
           script: |
             set -e
 
@@ -358,7 +360,7 @@ jobs:
     steps:
       - name: Create Summary
         run: |
-          echo "## 🚀 Lumi Agent 배포 결과" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Korean Learning Simulator 배포 결과" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # 빌드 결과
